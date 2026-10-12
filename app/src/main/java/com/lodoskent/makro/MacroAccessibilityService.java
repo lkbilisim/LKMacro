@@ -1,6 +1,7 @@
 package com.lodoskent.makro;
 
 import android.accessibilityservice.AccessibilityService;
+import android.app.AlertDialog;
 import android.accessibilityservice.GestureDescription;
 import android.content.SharedPreferences;
 import android.graphics.Color;
@@ -10,12 +11,14 @@ import android.graphics.drawable.GradientDrawable;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
+import android.text.InputType;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.view.accessibility.AccessibilityEvent;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -212,6 +215,8 @@ public class MacroAccessibilityService extends AccessibilityService {
         less.setOnClickListener(v -> setPointCount(getPointCount() - 1));
         more.setOnClickListener(v -> setPointCount(getPointCount() + 1));
         menu.addView(countRow);
+        pointCountLabel.setOnClickListener(v -> promptPointCount());
+        addAction("Sayı girerek tuş seç", this::promptPointCount);
         addAction("Noktaları yerleştir", () -> {
             if (running) {
                 toast("Önce makroyu durdur.");
@@ -272,13 +277,64 @@ public class MacroAccessibilityService extends AccessibilityService {
         pointCountLabel.setText(String.valueOf(getPointCount()));
     }
 
+    private void promptPointCount() {
+        if (running) {
+            toast("Tuş sayısını değiştirmeden önce makroyu durdur.");
+            return;
+        }
+        final EditText input = new EditText(this);
+        input.setSingleLine(true);
+        input.setInputType(InputType.TYPE_CLASS_NUMBER);
+        input.setText(String.valueOf(getPointCount()));
+        input.setSelectAllOnFocus(true);
+        LinearLayout content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.setPadding(dp(22), dp(4), dp(22), 0);
+        content.addView(input, new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT));
+        AlertDialog dialog = new AlertDialog.Builder(this)
+            .setTitle("Kaç tane tuş açılsın?")
+            .setMessage("1–100 arasında sayı gir. Seçimden sonra noktaları yerleştirip kaydet.")
+            .setView(content)
+            .setNegativeButton("Vazgeç", (d, which) -> {})
+            .setPositiveButton("Uygula", null)
+            .create();
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY);
+            dialog.getWindow().setSoftInputMode(
+                WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+        }
+        dialog.setOnShowListener(ignored -> {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+                try {
+                    int requested = Integer.parseInt(input.getText().toString().trim());
+                    if (requested < 1 || requested > 100) {
+                        input.setError("1–100 arasında sayı gir.");
+                        return;
+                    }
+                    setPointCount(requested);
+                    dialog.dismiss();
+                } catch (NumberFormatException ex) {
+                    input.setError("Geçerli bir sayı gir.");
+                }
+            });
+            input.requestFocus();
+        });
+        try {
+            dialog.show();
+        } catch (RuntimeException error) {
+            toast("Sayı giriş penceresi açılamadı.");
+        }
+    }
+
     private void showMenu() {
         if (menu == null || menuShowing) return;
         if (pointCountLabel != null) pointCountLabel.setText(String.valueOf(getPointCount()));
         int x = bubblePosition.x + dp(54);
         if (x + dp(298) > width()) x = bubblePosition.x - dp(298);
         menuPosition.x = bound(x, 0, Math.max(0, width() - dp(298)));
-        menuPosition.y = bound(bubblePosition.y, 0, Math.max(0, height() - dp(425)));
+        menuPosition.y = bound(bubblePosition.y, 0, Math.max(0, height() - dp(505)));
         wm.addView(menu, menuPosition);
         menuShowing = true;
         updateMessage();

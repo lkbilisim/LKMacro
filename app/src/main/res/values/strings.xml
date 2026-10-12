@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">LDK Makro</string>
+    <string name="accessibility_description">Kullanıcının belirlediği üç noktaya dokunabilen yüzen makro hizmeti.</string>
+</resources>

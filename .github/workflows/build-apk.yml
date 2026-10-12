@@ -27,6 +27,12 @@ jobs:
         run: |
           echo "ANDROID_HOME=$ANDROID_HOME"
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$ANDROID_HOME" "platforms;android-35" "build-tools;35.0.0"
+      - name: LK uygulama ikonunu hazirla
+        run: |
+          mkdir -p app/src/main/res/drawable-nodpi
+          base64 -d branding/LK_ikon.webp.base64 > app/src/main/res/drawable-nodpi/lk_launcher_icon.webp
+          test -s app/src/main/res/drawable-nodpi/lk_launcher_icon.webp
+          file app/src/main/res/drawable-nodpi/lk_launcher_icon.webp
       - name: APK derle
         run: gradle --no-daemon :app:assembleDebug
       - name: APK dosyasini yukle

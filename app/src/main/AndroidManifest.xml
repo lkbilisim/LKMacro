@@ -3,6 +3,8 @@
     <application
         android:allowBackup="false"
         android:label="LK Makro"
+        android:icon="@drawable/lk_launcher_icon"
+        android:roundIcon="@drawable/lk_launcher_icon"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
         <activity android:name=".MainActivity" android:exported="true">

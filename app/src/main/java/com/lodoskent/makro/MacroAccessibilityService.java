@@ -82,6 +82,8 @@ public class MacroAccessibilityService extends AccessibilityService {
             // Xiaomi/Android can move or detach an accessibility overlay
             // when the current window changes. Check without interrupting taps.
             ensureBubbleVisible();
+            if (bubble != null)
+                Log.i("LKMacro", "Bubble check: attached=" + bubble.isAttachedToWindow());
             updateMessage();
             handler.postDelayed(this, 2000);
         }

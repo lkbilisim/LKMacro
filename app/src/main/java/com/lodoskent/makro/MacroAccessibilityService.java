@@ -20,8 +20,10 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 import java.util.Random;
+import java.util.ArrayList;
 
 public class MacroAccessibilityService extends AccessibilityService {
+    // Keep the old preferences file so upgrades retain previously saved settings.
     public static final String PREFS = "ldk_macro_preferences";
     private static MacroAccessibilityService active;
     private static final int[] COLORS = {
@@ -30,8 +32,8 @@ public class MacroAccessibilityService extends AccessibilityService {
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Random random = new Random();
-    private final View[] markers = new View[3];
-    private final WindowManager.LayoutParams[] markerPositions = new WindowManager.LayoutParams[3];
+    private final ArrayList<View> markers = new ArrayList<>();
+    private final ArrayList<WindowManager.LayoutParams> markerPositions = new ArrayList<>();
     private SharedPreferences prefs;
     private WindowManager wm;
     private View bubble;
@@ -40,6 +42,9 @@ public class MacroAccessibilityService extends AccessibilityService {
     private LinearLayout menu;
     private WindowManager.LayoutParams menuPosition;
     private TextView message;
+    private TextView pointCountLabel;
+    private int activeCount = 3;
+    private int generation = 0;
     private boolean menuShowing, markersShowing, running;
     private long nextCycleTime, nextPauseTime;
     private int cycles;
@@ -185,19 +190,36 @@ public class MacroAccessibilityService extends AccessibilityService {
         menu.setPadding(dp(12), dp(12), dp(12), dp(12));
         menu.setBackground(bg(Color.rgb(21, 36, 55), 14));
 
-        menu.addView(text("LDK MAKRO  •  Kontrol", 16, true));
+        menu.addView(text("LK MAKRO  •  Kontrol", 16, true));
         message = text("Hazır", 12, false);
         message.setPadding(0, dp(6), 0, dp(6));
         menu.addView(message);
 
-        addAction("①②③  Noktaları yerleştir", () -> {
+        menu.addView(text("Kaç tane tuş açılsın?", 14, true));
+        LinearLayout countRow = new LinearLayout(this);
+        countRow.setGravity(Gravity.CENTER);
+        Button less = new Button(this);
+        less.setText("−");
+        less.setTextSize(20);
+        countRow.addView(less, new LinearLayout.LayoutParams(0, dp(44), 1f));
+        pointCountLabel = text(String.valueOf(getPointCount()), 22, true);
+        pointCountLabel.setGravity(Gravity.CENTER);
+        countRow.addView(pointCountLabel, new LinearLayout.LayoutParams(0, dp(44), 1f));
+        Button more = new Button(this);
+        more.setText("+");
+        more.setTextSize(20);
+        countRow.addView(more, new LinearLayout.LayoutParams(0, dp(44), 1f));
+        less.setOnClickListener(v -> setPointCount(getPointCount() - 1));
+        more.setOnClickListener(v -> setPointCount(getPointCount() + 1));
+        menu.addView(countRow);
+        addAction("Noktaları yerleştir", () -> {
             if (running) {
                 toast("Önce makroyu durdur.");
                 return;
             }
             showMarkers();
             hideMenu();
-            toast("1 Hedef, 2 Saldır, 3 Konuşlandır. Kaydetmek için M'ye bas.");
+            toast(getPointCount() + " nokta açıldı. Sırayla yerleştir, M üzerinden kaydet.");
         });
         addAction("Konumları kaydet", () -> {
             if (!markersShowing) {
@@ -228,12 +250,35 @@ public class MacroAccessibilityService extends AccessibilityService {
         b.setOnClickListener(v -> fn.run());
     }
 
+    private int getPointCount() {
+        return bound(prefs.getInt("point_count", 3), 1, 100);
+    }
+
+    private void setPointCount(int requested) {
+        if (running) {
+            toast("Tuş sayısını değiştirmek için önce durdur.");
+            return;
+        }
+        if (requested < 1 || requested > 100) {
+            toast("Tuş sayısı 1 ile 100 arasında olmalı.");
+            return;
+        }
+        if (requested != getPointCount()) {
+            if (markersShowing) hideMarkers();
+            prefs.edit().putInt("point_count", requested)
+                .putBoolean("points_set", false).apply();
+            toast(requested + " tuş seçildi. Noktaları yeniden kaydet.");
+        }
+        pointCountLabel.setText(String.valueOf(getPointCount()));
+    }
+
     private void showMenu() {
         if (menu == null || menuShowing) return;
+        if (pointCountLabel != null) pointCountLabel.setText(String.valueOf(getPointCount()));
         int x = bubblePosition.x + dp(54);
         if (x + dp(298) > width()) x = bubblePosition.x - dp(298);
         menuPosition.x = bound(x, 0, Math.max(0, width() - dp(298)));
-        menuPosition.y = bound(bubblePosition.y, 0, Math.max(0, height() - dp(370)));
+        menuPosition.y = bound(bubblePosition.y, 0, Math.max(0, height() - dp(425)));
         wm.addView(menu, menuPosition);
         menuShowing = true;
         updateMessage();
@@ -247,20 +292,22 @@ public class MacroAccessibilityService extends AccessibilityService {
 
     private void showMarkers() {
         if (markersShowing) return;
-        String[] ids = {"1", "2", "3"};
+        int count = getPointCount();
         int w = width(), h = height(), size = dp(48);
-        for (int i = 0; i < 3; i++) {
+        int columns = Math.max(1, Math.min(5, w / dp(56)));
+        // Existing points keep their positions when point count changes.
+        for (int i = 0; i < count; i++) {
             final int index = i;
-            TextView circle = text(ids[i], 21, true);
+            TextView circle = text(String.valueOf(i + 1), i < 9 ? 21 : 16, true);
             circle.setGravity(Gravity.CENTER);
-            circle.setBackground(bg(COLORS[i], 30));
-            int cx = prefs.getInt("x" + i, w / 2);
-            int cy = prefs.getInt("y" + i, h / 2 + (i - 1) * dp(85));
+            circle.setBackground(bg(COLORS[i % COLORS.length], 30));
+            int initialX = dp(30) + (i % columns) * dp(57);
+            int initialY = dp(180) + (i / columns) * dp(57);
+            int cx = prefs.getInt("x" + i, initialX);
+            int cy = prefs.getInt("y" + i, initialY);
             WindowManager.LayoutParams p = layout(size, size,
                 bound(cx - size / 2, 0, Math.max(0, w - size)),
                 bound(cy - size / 2, 0, Math.max(0, h - size)));
-            markers[index] = circle;
-            markerPositions[index] = p;
             circle.setOnTouchListener(new View.OnTouchListener() {
                 float x, y;
                 int baseX, baseY;
@@ -269,40 +316,46 @@ public class MacroAccessibilityService extends AccessibilityService {
                         case MotionEvent.ACTION_DOWN:
                             x = e.getRawX();
                             y = e.getRawY();
-                            baseX = markerPositions[index].x;
-                            baseY = markerPositions[index].y;
+                            baseX = markerPositions.get(index).x;
+                            baseY = markerPositions.get(index).y;
                             return true;
                         case MotionEvent.ACTION_MOVE:
-                            markerPositions[index].x = bound(baseX + Math.round(e.getRawX() - x),
+                            WindowManager.LayoutParams pos = markerPositions.get(index);
+                            pos.x = bound(baseX + Math.round(e.getRawX() - x),
                                 0, Math.max(0, width() - dp(48)));
-                            markerPositions[index].y = bound(baseY + Math.round(e.getRawY() - y),
+                            pos.y = bound(baseY + Math.round(e.getRawY() - y),
                                 0, Math.max(0, height() - dp(48)));
-                            wm.updateViewLayout(markers[index], markerPositions[index]);
+                            wm.updateViewLayout(markers.get(index), pos);
                             return true;
                         default: return true;
                     }
                 }
             });
+            markers.add(circle);
+            markerPositions.add(p);
             wm.addView(circle, p);
         }
         markersShowing = true;
     }
 
     private void saveMarkers() {
-        SharedPreferences.Editor edit = prefs.edit();
-        for (int i = 0; i < 3; i++) {
-            edit.putInt("x" + i, markerPositions[i].x + dp(24));
-            edit.putInt("y" + i, markerPositions[i].y + dp(24));
+        if (!markersShowing || markers.size() != getPointCount()) {
+            toast("Tüm noktaları yeniden yerleştir.");
+            return;
         }
+        SharedPreferences.Editor edit = prefs.edit();
+        for (int i = 0; i < markers.size(); i++) {
+            edit.putInt("x" + i, markerPositions.get(i).x + dp(24));
+            edit.putInt("y" + i, markerPositions.get(i).y + dp(24));
+        }
+        edit.putInt("saved_point_count", markers.size());
         edit.putBoolean("points_set", true).apply();
     }
 
     private void hideMarkers() {
-        for (int i = 0; i < 3; i++) {
-            remove(markers[i]);
-            markers[i] = null;
-            markerPositions[i] = null;
-        }
+        for (View marker : markers) remove(marker);
+        markers.clear();
+        markerPositions.clear();
         markersShowing = false;
     }
 
@@ -311,13 +364,16 @@ public class MacroAccessibilityService extends AccessibilityService {
             toast("Makro zaten çalışıyor.");
             return;
         }
-        if (!prefs.getBoolean("points_set", false)) {
-            toast("Önce üç noktayı kaydet.");
+        activeCount = getPointCount();
+        int previouslySaved = prefs.getInt("saved_point_count", 3);
+        if (!prefs.getBoolean("points_set", false) || previouslySaved != activeCount) {
+            toast("Önce seçtiğin " + activeCount + " noktayı yerleştirip kaydet.");
             return;
         }
         if (markersShowing) hideMarkers();
         hideMenu();
         running = true;
+        generation++;
         cycles = 0;
         nextCycleTime = 0;
         nextPauseTime = SystemClock.uptimeMillis() + randomMinutes(
@@ -332,6 +388,7 @@ public class MacroAccessibilityService extends AccessibilityService {
     }
 
     private void stop(String reason) {
+        generation++;
         running = false;
         label = reason;
         nextCycleTime = 0;
@@ -345,7 +402,8 @@ public class MacroAccessibilityService extends AccessibilityService {
 
     private void click(int step) {
         if (!running) return;
-        if (step > 2) {
+        final int token = generation;
+        if (step >= activeCount) {
             schedule();
             return;
         }
@@ -356,8 +414,7 @@ public class MacroAccessibilityService extends AccessibilityService {
             toast("Noktaları yeniden yerleştir.");
             return;
         }
-        String[] names = {"Hedef", "Saldır", "Konuşlandır"};
-        label = "Tur " + cycles + " • " + names[step];
+        label = "Tur " + cycles + " • tuş " + (step + 1) + "/" + activeCount;
         updateMessage();
         Path p = new Path();
         p.moveTo(x, y);
@@ -366,15 +423,17 @@ public class MacroAccessibilityService extends AccessibilityService {
             .build();
         boolean accepted = dispatchGesture(g, new GestureResultCallback() {
             @Override public void onCompleted(GestureDescription done) {
-                if (!running) return;
-                if (step == 2) schedule();
+                if (!running || token != generation) return;
+                if (step == activeCount - 1) schedule();
                 else {
                     int delay = Math.max(1, prefs.getInt("step_ms", 1100));
-                    handler.postDelayed(() -> click(step + 1), delay);
+                    handler.postDelayed(() -> {
+                        if (running && token == generation) click(step + 1);
+                    }, delay);
                 }
             }
             @Override public void onCancelled(GestureDescription done) {
-                if (!running) return;
+                if (!running || token != generation) return;
                 stop("Dokunma iptal edildi");
                 toast("Dokunma iptal edildi; kontrol et.");
             }

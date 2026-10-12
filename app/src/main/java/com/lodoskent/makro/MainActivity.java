@@ -374,7 +374,7 @@ public class MainActivity extends Activity {
         addSpace(contentArea,17);
         contentArea.addView(UiKit.center(this,"LK Makro",30,Color.WHITE,true));
         addSpace(contentArea,3);
-        contentArea.addView(UiKit.center(this,"PREMIUM  •  v2.0",12,UiKit.CYAN,true));
+        contentArea.addView(UiKit.center(this,"PREMIUM  •  v2.1",12,UiKit.CYAN,true));
         addSpace(contentArea,28);
         LinearLayout card=card();
         card.addView(UiKit.label(this,"Otomatik Dokunuş",17,Color.WHITE,true));

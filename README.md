@@ -1,28 +1,29 @@
-# LK Makro v1.3 — Android
+# LK Makro v2.0 — Premium UI
 
-Android Erişilebilirlik hizmetiyle, kullanıcının seçtiği sayıda noktaya sırayla dokunan, yüzen M kontrollü makro.
+LK Makro, Android erişilebilirlik hizmetiyle, seçilen sayıdaki ekrana dokunma noktalarına sırayla basan ve bunları zamanlayan kullanıcı kontrollü uygulamadır.
 
-## Tuş sayısını belirle
+## Premium tasarım
+- Kullanıcının LK logosu: Android uygulama ikonu, karşılama ekranı ve yüzen M butonu.
+- Koyu lacivert / neon mavi – turkuaz teknoloji teması, parıltılı geçişli düğmeler, cam görünümlü kartlar.
+- **Ana Sayfa**: LK Makro logolu karşılama, sistem durumu ve Ayarlar'a geçiş.
+- **Ayarlar**: rastgele bekleme anahtarı, en az/en çok saniye, dokunuş gecikmesi, mola aralığı ve mola süresi; artı/eksi kontrolleri ve ayarları kaydetme.
+- **Hakkında**: özellikler ve kullanım sınırlamaları.
+- **Yüzen M**: logolu sürüklenebilir buton, sayısal tuş seçimi, noktaları yerleştir, konumları kaydet, başlat/durdur; neon mavi numaralı noktalar.
 
-Ana ekranda tuş sayısı sorulmaz; burası yalnızca süre ve mola ayarları içindir. Oyundayken yüzen **M** düğmesine dokun, **“Sayı girerek tuş seç”** seçeneğine bas ve açılan soruya **1–100** arasında istediğin tuş sayısını yaz. Başlangıç değeri 3'tür. Dilersen M içindeki **+ / −** ile birer birer de değiştirebilirsin.
+## Makro mantığı
+1. M panelindeki **Sayı Girerek Tuş Seç** ile 1–100 arasında istediğin sayı belirlenir.
+2. **Noktaları Yerleştir** ile numaralı daireleri istediğin yerlere sürükle ve **Konumları Kaydet**.
+3. **Başlat** seçilince 1→2→...→N noktalarına sırayla dokunulur; son dokunuştan sonra ayarlardaki iki saniye değeri arasında yeni rastgele bekleme başlar.
+4. Mola, tur sayısına göre değil, belirlediğin rastgele *dakika aralıklarına* göre planlanır ve mevcut tur tamamlanınca normal beklemeye eklenir.
+5. M üzerinden durdurulabilir. Ayarlar değiştirilirse durdurup yeniden başlat.
 
-**M → Noktaları yerleştir** ile seçilen sayı kadar numaralı ve sürüklenebilir nokta oluştur; istediğin butonların üzerine yerleştir. **M → Konumları kaydet** ile tamamla. Makro sırayla **1 → 2 → 3 → 4 → ... → N** tuşlarına basıp son dokunuştan sonra bir sonraki tur için rastgele bekleme seçer. Tuş sayısı değişince koordinatları yeniden kaydetmek gerekir. Mevcut ilk üç koordinat, sayı aynı kaldığı sürece korunur.
+**Sınırlar:** Basış ve mola zamanları pozitif tam sayı değerleridir; verilen aralıkta üst sınır alt sınırdan küçük olamaz. 45–90 saniye yalnızca ilk başlangıç değeridir ve değiştirilebilir. Rastgele bekleme kapatılırsa en az saniye değerinden sabit bekleme uygulanır. OCR yoktur ve ekrandan otomatik hedef tanınmaz.
 
-## Serbest zamanlama
+## Android APK derleme
+GitHub Actions → **APK Olustur** → yeşil başarılı derleme → Artifacts → **LK-Makro-APK**. Kaynak workflow dosyası `.github/workflows/build-apk.yml`, kullanıcı logosu kaynağı `branding/LK_ikon.webp.base64` altında saklanır ve build sırasında `drawable-nodpi` içine hazırlanır.
 
-- Son dokunuş sonrası rastgele bekleme: Başlangıç 45–90 saniye, ama **1 veya daha büyük istediğin aralık** seçilebilir.
-- Adımlar arasındaki dokunma gecikmesi: Başlangıç 1100 milisaniye, ayarlanabilir.
-- Zaman bazlı ek mola aralığı: Başlangıç 4–8 dakika, ayarlanabilir.
-- Ek mola süresi: Başlangıç 1–5 dakika, ayarlanabilir.
+Depomuz public ise standart GitHub-hosted runner'larda GitHub Actions ücretsizdir; ücretli larger runner veya kota aşan özel depo kullanımı için ayrı faturalandırma kuralları bulunur. GitHub Free hesabında private depo için aylık 2.000 dakika, 500 MB artifact depolaması vardır (2026 resmî GitHub belgelerine göre).
 
-Mola tıklama sayısına bağlı değildir. Sırası geldiğinde devam eden bütün dokunmalar tamamlanır, ardından normal beklemeye ek rastgele mola eklenir. Döngüyü durdurup tekrar başlatmak değiştirilen değerleri uygular.
+Android cihazda kurulum için Erişilebilirlik Hizmeti izni gerekir. Android 13'te güvenilir, dışarıdan yüklenmiş uygulamalar için sistemin Kısıtlı Ayarlar izin kontrolü açılmak zorunda olabilir. GitHub Actions debug imzaları değişirse mevcut uygulamanın üzerine kurulum yapılamayabilir; uygulama kaldırılırsa kayıtlı noktalar ve ayarlar silinir.
 
-## APK
-
-GitHub **Actions → APK Olustur → yeşil son çalışma → Artifacts → LK-Makro-APK**. ZIP içindeki `app-debug.apk` kurulur.
-
-Kurulumdan sonra Ayarlar → Erişilebilirlik → indirilen hizmetlerde **LK Makro - dokunma hizmeti** etkinleştirilir. Android 13 kısıtlı ayar engeli çıkarabilir.
-
-Paket kimliği (`com.lodoskent.makro`) ve mevcut ayar saklama anahtarı yükseltmelerde korunur. GitHub Actions debug imzaları yeniden üretilirse önceki APK'yı kaldırmak gerekebilir (ayarlar silinir).
-
-**Sınırlama:** Ekranı OCR ile okumaz; sabit koordinatlarla çalışır. Oyun arayüzü veya hedef değişirse yanlış dokunabilir. Rastgele zamanlama hesabın yaptırıma uğramayacağı anlamına gelmez.
+**Güvenlik:** Uygulama sabit koordinatlara dokunur; oyun arayüzü değişirse yanlış giriş yapabilir. Rastgele zamanlama, oyun hizmet şartlarına uyma veya ban yememe garantisi sağlamaz. APK GitHub Actions'da derlenmiş ve paket içeriği doğrulanmıştır; gerçek cihaz üzerinde otomatik UI testi henüz yapılmamıştır.

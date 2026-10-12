@@ -124,6 +124,7 @@ public class MacroAccessibilityService extends AccessibilityService {
         }
         handler.removeCallbacks(refresh);
         handler.post(refresh);
+        Log.i("LKMacro", "Accessibility service connected; bubble="+(bubble != null && bubble.isAttachedToWindow()));
     }
 
     private void restoreOverlay() {

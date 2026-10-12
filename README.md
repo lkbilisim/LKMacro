@@ -1,4 +1,4 @@
-# LK Makro v2.0 — Premium UI
+# LK Makro v2.1 — Premium UI
 
 LK Makro, Android erişilebilirlik hizmetiyle, seçilen sayıdaki ekrana dokunma noktalarına sırayla basan ve bunları zamanlayan kullanıcı kontrollü uygulamadır.
 
@@ -9,6 +9,19 @@ LK Makro, Android erişilebilirlik hizmetiyle, seçilen sayıdaki ekrana dokunma
 - **Ayarlar**: rastgele bekleme anahtarı, en az/en çok saniye, dokunuş gecikmesi, mola aralığı ve mola süresi; artı/eksi kontrolleri ve ayarları kaydetme.
 - **Hakkında**: özellikler ve kullanım sınırlamaları.
 - **Yüzen M**: logolu sürüklenebilir buton, sayısal tuş seçimi, noktaları yerleştir, konumları kaydet, başlat/durdur; neon mavi numaralı noktalar.
+
+
+## v2.1: Yüzen LK düğmesini geri getirme
+
+- **X**, yalnızca açık kontrol panelini kapatır; LK yüzen düğmesini kapatmamalıdır.
+- Daha önce kaydedilen düğme koordinatları, Android ekran sınırlarına göre düzeltilir.
+- Hizmet açık olduğu hâlde Android yüzen düğmeyi kaldırırsa görünümün tekrar açılması denenir.
+- Ana Sayfa ve Ayarlar'da **Yüzen LK Düğmesini Geri Getir** düğmesi bulunur; görünür LK simgesini ekranın sol tarafına taşır. Güvenlik için o sırada çalışan makro durdurulur.
+- Hizmet bağlantısı kaybolursa kullanıcıya Erişilebilirlik ayarlarına gitme olanağı gösterilir.
+- Uygulama, bağlanma veya yüzen pencere hatasını uygulama ayarlarında saklar.
+- GitHub Actions artık debug APK'yı indirmeye sunmadan önce `apksigner verify` ile imza ve ZIP bütünlüğünü kontrol eder.
+
+**Önemli:** GitHub Actions geliştirme (debug) imzası her yeni çalışma ortamında değişebilir; önceki sürüm üstüne kurulum reddedilirse eskiyi kaldırmak gerekebilir. İleride imzanın kalıcı olması için özel imzalama anahtarı yalnızca GitHub Actions Secrets içinde saklanmalıdır, herkese açık depoya yüklenmemelidir.
 
 ## Makro mantığı
 1. M panelindeki **Sayı Girerek Tuş Seç** ile 1–100 arasında istediğin sayı belirlenir.

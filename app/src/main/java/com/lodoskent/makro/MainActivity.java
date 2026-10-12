@@ -18,6 +18,7 @@ import android.widget.Toast;
 
 public class MainActivity extends Activity {
     private EditText minimum, maximum, gap;
+    private EditText pauseMin, pauseMax, restMin, restMax;
     private TextView state;
     private SharedPreferences prefs;
 
@@ -35,7 +36,7 @@ public class MainActivity extends Activity {
         root.addView(text("Yüzen üç noktalı otomasyon", 15, false));
         root.addView(text(" ", 16, false));
         root.addView(text("Konuşlandır sonrası rastgele süre", 17, true));
-        root.addView(text("Her tur 45 ile 90 saniye arasında yeniden seçilir.", 14, false));
+        root.addView(text("Buraya yazdığın iki sayı arasında her tur yeniden rastgele süre seçilir. Sabit 45–90 saniye sınırı yok.", 14, false));
         minimum = number(prefs.getInt("min_seconds", 45));
         maximum = number(prefs.getInt("max_seconds", 90));
         root.addView(text("En az (saniye)", 14, false));
@@ -47,7 +48,21 @@ public class MainActivity extends Activity {
         gap = number(prefs.getInt("step_ms", 1100));
         root.addView(text("Gecikme (milisaniye)", 14, false));
         root.addView(gap);
-        root.addView(text("Ek mola: 4–8 dakika aralıkla 1–5 dakika (rastgele)", 14, true));
+        root.addView(text("Zaman bazlı ek mola", 17, true));
+        root.addView(text("Basış sayısına göre değil, geçen süreye göre. Belirlenen zaman geldiğinde mevcut Hedef → Saldır → Konuşlandır işlemi tamamlanır; ardından ek mola uygulanır.", 14, false));
+        root.addView(text("Mola aralığı en az (dakika)", 14, false));
+        pauseMin = number(prefs.getInt("pause_interval_min_minutes", 4));
+        root.addView(pauseMin);
+        root.addView(text("Mola aralığı en çok (dakika)", 14, false));
+        pauseMax = number(prefs.getInt("pause_interval_max_minutes", 8));
+        root.addView(pauseMax);
+        root.addView(text("Mola süresi en az (dakika)", 14, false));
+        restMin = number(prefs.getInt("rest_min_minutes", 1));
+        root.addView(restMin);
+        root.addView(text("Mola süresi en çok (dakika)", 14, false));
+        restMax = number(prefs.getInt("rest_max_minutes", 5));
+        root.addView(restMax);
+        root.addView(text("Mola, her turun normal beklemesine eklenir. Ayarları çalışırken değiştirirsen makroyu durdurup yeniden başlat.", 13, false));
         Button save = new Button(this);
         save.setText("AYARLARI KAYDET");
         root.addView(save);
@@ -85,15 +100,31 @@ public class MainActivity extends Activity {
             int min = Integer.parseInt(minimum.getText().toString().trim());
             int max = Integer.parseInt(maximum.getText().toString().trim());
             int ms = Integer.parseInt(gap.getText().toString().trim());
-            if (min < 45 || max > 90 || min > max) {
-                Toast.makeText(this, "Aralık 45–90 sn içinde olmalı.", Toast.LENGTH_LONG).show();
+            int pauseFrom = Integer.parseInt(pauseMin.getText().toString().trim());
+            int pauseTo = Integer.parseInt(pauseMax.getText().toString().trim());
+            int restFrom = Integer.parseInt(restMin.getText().toString().trim());
+            int restTo = Integer.parseInt(restMax.getText().toString().trim());
+            if (min <= 0 || max < min) {
+                Toast.makeText(this, "Saldırı aralığında pozitif sayılar gir. En çok, en azdan küçük olamaz.", Toast.LENGTH_LONG).show();
                 return;
             }
-            if (ms < 300 || ms > 5000) {
-                Toast.makeText(this, "Dokunuş gecikmesi 300–5000 ms olmalı.", Toast.LENGTH_LONG).show();
+            if (ms <= 0) {
+                Toast.makeText(this, "Dokunuş gecikmesi pozitif olmalı.", Toast.LENGTH_LONG).show();
                 return;
             }
-            prefs.edit().putInt("min_seconds", min).putInt("max_seconds", max).putInt("step_ms", ms).apply();
+            if (pauseFrom <= 0 || pauseTo < pauseFrom || restFrom <= 0 || restTo < restFrom) {
+                Toast.makeText(this, "Mola dakika aralıklarında pozitif sayılar gir. En çok, en azdan küçük olamaz.", Toast.LENGTH_LONG).show();
+                return;
+            }
+            prefs.edit()
+                .putInt("min_seconds", min)
+                .putInt("max_seconds", max)
+                .putInt("step_ms", ms)
+                .putInt("pause_interval_min_minutes", pauseFrom)
+                .putInt("pause_interval_max_minutes", pauseTo)
+                .putInt("rest_min_minutes", restFrom)
+                .putInt("rest_max_minutes", restTo)
+                .apply();
             Toast.makeText(this, "Ayarlar kaydedildi.", Toast.LENGTH_SHORT).show();
         } catch (NumberFormatException ex) {
             Toast.makeText(this, "Geçerli bir sayı gir.", Toast.LENGTH_LONG).show();

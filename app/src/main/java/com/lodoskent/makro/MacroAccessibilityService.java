@@ -210,7 +210,7 @@ public class MacroAccessibilityService extends AccessibilityService {
         });
         addAction("▶  BAŞLAT", this::start);
         addAction("■  DURDUR", () -> stop("Elle durduruldu"));
-        menu.addView(text("45–90 sn rastgele bekleme. Ara sıra 1–5 dk ek mola.", 11, false));
+        menu.addView(text("Saldırı ve mola sürelerini uygulamanın ayar ekranından belirleyebilirsin.", 11, false));
         menuPosition = layout(dp(298), WindowManager.LayoutParams.WRAP_CONTENT, dp(65), dp(140));
     }
 
@@ -320,7 +320,9 @@ public class MacroAccessibilityService extends AccessibilityService {
         running = true;
         cycles = 0;
         nextCycleTime = 0;
-        nextPauseTime = SystemClock.uptimeMillis() + randomSeconds(240, 480);
+        nextPauseTime = SystemClock.uptimeMillis() + randomMinutes(
+            getRangeMin("pause_interval_min_minutes", "pause_interval_max_minutes", 4),
+            getRangeMax("pause_interval_min_minutes", "pause_interval_max_minutes", 4, 8));
         label = "Çalışıyor";
         bubbleText.setText("▶");
         bubbleText.setBackground(bg(Color.rgb(23, 126, 82), 40));
@@ -367,7 +369,7 @@ public class MacroAccessibilityService extends AccessibilityService {
                 if (!running) return;
                 if (step == 2) schedule();
                 else {
-                    int delay = bound(prefs.getInt("step_ms", 1100), 300, 5000);
+                    int delay = Math.max(1, prefs.getInt("step_ms", 1100));
                     handler.postDelayed(() -> click(step + 1), delay);
                 }
             }
@@ -385,15 +387,19 @@ public class MacroAccessibilityService extends AccessibilityService {
 
     private void schedule() {
         if (!running) return;
-        int min = bound(prefs.getInt("min_seconds", 45), 45, 90);
-        int max = bound(prefs.getInt("max_seconds", 90), min, 90);
+        int min = getRangeMin("min_seconds", "max_seconds", 45);
+        int max = getRangeMax("min_seconds", "max_seconds", 45, 90);
         long wait = randomSeconds(min, max);
         long now = SystemClock.uptimeMillis();
         if (now >= nextPauseTime) {
-            long rest = randomSeconds(60, 300);
+            long rest = randomMinutes(
+                getRangeMin("rest_min_minutes", "rest_max_minutes", 1),
+                getRangeMax("rest_min_minutes", "rest_max_minutes", 1, 5));
             wait += rest;
-            nextPauseTime = now + wait + randomSeconds(240, 480);
-            label = "Tur " + cycles + " • ekstra mola";
+            nextPauseTime = now + wait + randomMinutes(
+                getRangeMin("pause_interval_min_minutes", "pause_interval_max_minutes", 4),
+                getRangeMax("pause_interval_min_minutes", "pause_interval_max_minutes", 4, 8));
+            label = "Tur " + cycles + " • " + (rest / 60000L) + " dk ek mola";
         } else {
             label = "Tur " + cycles + " • rastgele bekleme";
         }
@@ -403,8 +409,28 @@ public class MacroAccessibilityService extends AccessibilityService {
         updateMessage();
     }
 
+    private int getRangeMin(String minKey, String maxKey, int fallback) {
+        return Math.max(1, prefs.getInt(minKey, fallback));
+    }
+
+    private int getRangeMax(String minKey, String maxKey, int fallbackMin, int fallbackMax) {
+        return Math.max(getRangeMin(minKey, maxKey, fallbackMin),
+            prefs.getInt(maxKey, fallbackMax));
+    }
+
+    private long randomUnit(int min, int max) {
+        // Long kullanımı, iki büyük pozitif sınırın farkında int taşmasını önler.
+        long spread = (long) max - min + 1L;
+        long picked = (long) (random.nextDouble() * spread);
+        return (long) min + Math.min(spread - 1L, picked);
+    }
+
     private long randomSeconds(int min, int max) {
-        return ((long) min + random.nextInt(max - min + 1)) * 1000L;
+        return randomUnit(min, max) * 1000L;
+    }
+
+    private long randomMinutes(int min, int max) {
+        return randomUnit(min, max) * 60000L;
     }
 
     private void updateMessage() {

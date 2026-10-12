@@ -413,7 +413,7 @@ public class MainActivity extends Activity {
         } else {
             String lastError=prefs.getString("last_service_error","");
             status.setText("◌  Hizmet bağlı değil. Erişilebilirlikten aç."
-                + (lastError.isEmpty()?"":"\\nSon hata: "+lastError));
+                + (lastError.isEmpty()?"":"\nSon hata: "+lastError));
         }
     }
 

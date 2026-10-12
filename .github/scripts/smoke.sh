@@ -21,8 +21,12 @@ if grep -q "FATAL EXCEPTION" smoke-output/logcat.txt; then
     echo "Crash found in logcat!"
     exit 1
 fi
-if ! grep -q "Accessibility service connected; bubble=true" smoke-output/logcat.txt; then
-    echo "Service not confirmed alive with floating bubble!"
+if ! grep -q "Bound services:{Service\[label=LK Makro" smoke-output/accessibility.txt; then
+    echo "Accessibility service did not bind to Android!"
     exit 1
 fi
-echo "Accessibility smoke test passed"
+if ! grep -q "Bubble check: attached=true" smoke-output/logcat.txt; then
+    echo "Bubble never became attached!"
+    exit 1
+fi
+echo "Accessibility service and LK floating bubble both confirmed on emulator"

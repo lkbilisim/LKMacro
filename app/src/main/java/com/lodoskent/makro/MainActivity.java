@@ -208,6 +208,9 @@ public class MainActivity extends Activity {
         TextView cta=button("Başlayalım   →",true);
         contentArea.addView(cta,columnParams(-1,d(57),13));
         cta.setOnClickListener(v->build(1));
+        TextView restore=button("◎  Yüzen LK Düğmesini Geri Getir",true);
+        contentArea.addView(restore,columnParams(-1,d(56),9));
+        restore.setOnClickListener(v->restoreFloatingButton());
         TextView access=button("Erişilebilirliği Aç",false);
         contentArea.addView(access,columnParams(-1,d(50),6));
         access.setOnClickListener(v->startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)));
@@ -278,7 +281,11 @@ public class MainActivity extends Activity {
         help.addView(UiKit.label(this,"◎  Yüzen Kontrol",16,UiKit.CYAN,true));
         addSpace(help,5);
         help.addView(subtitle("Tuş sayısını oyun içindeki M panelinden belirle. Noktaları orada konumlandırıp kaydet, sonra Başlat'a dokun."));
-        addSpace(help,13);
+        addSpace(help,12);
+        TextView recover=button("◎  Yüzen LK Düğmesini Geri Getir",true);
+        help.addView(recover,columnParams(-1,d(50),10));
+        recover.setOnClickListener(v->restoreFloatingButton());
+        addSpace(help,3);
         TextView enable=button("Erişilebilirlik Hizmetini Aç  ↗",false);
         help.addView(enable,columnParams(-1,d(46),0));
         enable.setOnClickListener(v->startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)));
@@ -383,10 +390,31 @@ public class MainActivity extends Activity {
         cta.setOnClickListener(v->build(1));
     }
 
+    private void restoreFloatingButton() {
+        if (MacroAccessibilityService.restoreBubble()) {
+            Toast.makeText(this,
+                "LK düğmesi sol tarafa geri çağrılıyor. Oyuna dönüp kontrol et.",
+                Toast.LENGTH_LONG).show();
+            new android.os.Handler(getMainLooper()).postDelayed(this::refreshStatus, 1000);
+        } else {
+            Toast.makeText(this,
+                "Dokunma hizmeti çalışmıyor. Erişilebilirlikten kapatıp yeniden aç.",
+                Toast.LENGTH_LONG).show();
+            startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
+        }
+    }
+
     private void refreshStatus() {
-        if(status!=null)status.setText(MacroAccessibilityService.isConnected()
-            ? "●  Erişilebilirlik açık — yüzen M paneli hazır"
-            : "◌  Erişilebilirlik kapalı — aşağıdan etkinleştir");
+        if (status==null) return;
+        if (MacroAccessibilityService.isBubbleVisible()) {
+            status.setText("●  LK düğmesi aktif ve ekranda");
+        } else if (MacroAccessibilityService.isConnected()) {
+            status.setText("⚠  Hizmet açık ancak LK düğmesi görünmüyor. Geri getir'e dokun.");
+        } else {
+            String lastError=prefs.getString("last_service_error","");
+            status.setText("◌  Hizmet bağlı değil. Erişilebilirlikten aç."
+                + (lastError.isEmpty()?"":"\\nSon hata: "+lastError));
+        }
     }
 
     @Override protected void onResume() {

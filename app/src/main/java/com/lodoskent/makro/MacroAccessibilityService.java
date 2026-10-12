@@ -11,6 +11,7 @@ import android.graphics.drawable.GradientDrawable;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
+import android.util.Log;
 import android.text.InputType;
 import android.view.Gravity;
 import android.view.MotionEvent;
@@ -50,6 +51,8 @@ public class MacroAccessibilityService extends AccessibilityService {
     private TextView pointCountLabel;
     private int activeCount = 3;
     private int generation = 0;
+    private long lastRecoveryAttempt = 0;
+    private boolean shuttingDown = false;
     private boolean menuShowing, markersShowing, running;
     private long nextCycleTime, nextPauseTime;
     private int cycles;
@@ -66,24 +69,112 @@ public class MacroAccessibilityService extends AccessibilityService {
 
     private final Runnable refresh = new Runnable() {
         @Override public void run() {
+            if (active != MacroAccessibilityService.this || shuttingDown) return;
+            // Xiaomi/Android can move or detach an accessibility overlay
+            // when the current window changes. Check without interrupting taps.
+            ensureBubbleVisible();
             updateMessage();
-            handler.postDelayed(this, 1000);
+            handler.postDelayed(this, 2000);
         }
     };
 
-    public static boolean isConnected() { return active != null; }
+    public static boolean isConnected() {
+        MacroAccessibilityService service = active;
+        return service != null && service.wm != null && !service.shuttingDown;
+    }
+
+    /** Safe to invoke from the Activity even when the user closed the menu with X. */
+    public static boolean restoreBubble() {
+        MacroAccessibilityService service = active;
+        if (service == null || service.shuttingDown || service.wm == null) return false;
+        service.handler.post(() -> service.restoreOverlay());
+        return true;
+    }
+
+    private void reportError(String phase, RuntimeException exception) {
+        Log.e("LKMacro", phase, exception);
+        if (prefs != null) {
+            String detail = phase + ": " + exception.getClass().getSimpleName()
+                + (exception.getMessage() != null ? " — " + exception.getMessage() : "");
+            prefs.edit().putString("last_service_error", detail).apply();
+        }
+    }
 
     @Override protected void onServiceConnected() {
         super.onServiceConnected();
+        shuttingDown = false;
         active = this;
         prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
         wm = (WindowManager) getSystemService(WINDOW_SERVICE);
         try {
             makeBubble();
-            makeMenu();
-            handler.post(refresh);
         } catch (RuntimeException ex) {
-            Toast.makeText(this, "Yüzen düğme açılamadı.", Toast.LENGTH_LONG).show();
+            reportError("LK düğmesi oluşturulamadı", ex);
+        }
+        try {
+            makeMenu();
+        } catch (RuntimeException ex) {
+            reportError("LK paneli oluşturulamadı", ex);
+        }
+        handler.removeCallbacks(refresh);
+        handler.post(refresh);
+    }
+
+    private void restoreOverlay() {
+        if (wm == null || shuttingDown) return;
+        try {
+            hideMenu();
+            if (running) stop("Düğme kurtarıldı — güvenlik için makro durduruldu");
+            // Always use a known visible location for an explicit recovery.
+            int x = Math.min(dp(18), Math.max(0, width() - dp(62)));
+            int y = Math.min(dp(220), Math.max(0, height() - dp(150)));
+            prefs.edit().putInt("bubble_x", x).putInt("bubble_y", y).apply();
+            if (bubble != null && bubble.isAttachedToWindow()) {
+                bubblePosition.x = x;
+                bubblePosition.y = y;
+                wm.updateViewLayout(bubble, bubblePosition);
+            } else {
+                remove(bubble);
+                bubble = null;
+                makeBubble();
+            }
+            if (menu == null) makeMenu();
+            prefs.edit().remove("last_service_error").apply();
+            toast("LK düğmesi sol tarafta yeniden açıldı.");
+        } catch (RuntimeException ex) {
+            reportError("Düğme geri getirilemedi", ex);
+            toast("LK düğmesi açılamadı; hizmeti kapatıp aç.");
+        }
+    }
+
+    private void ensureBubbleVisible() {
+        if (wm == null || shuttingDown) return;
+        long now = SystemClock.uptimeMillis();
+        if (bubble == null || !bubble.isAttachedToWindow()) {
+            if (now - lastRecoveryAttempt < 10000) return;
+            lastRecoveryAttempt = now;
+            try {
+                remove(bubble);
+                bubble = null;
+                makeBubble();
+            } catch (RuntimeException ex) {
+                reportError("Yüzen düğme otomatik kurtarılamadı", ex);
+            }
+            return;
+        }
+        if (bubblePosition != null) {
+            int newX = bound(bubblePosition.x, dp(8), Math.max(dp(8), width() - dp(70)));
+            int newY = bound(bubblePosition.y, dp(55), Math.max(dp(55), height() - dp(125)));
+            if (newX != bubblePosition.x || newY != bubblePosition.y) {
+                bubblePosition.x = newX;
+                bubblePosition.y = newY;
+                try {
+                    wm.updateViewLayout(bubble, bubblePosition);
+                    prefs.edit().putInt("bubble_x", newX).putInt("bubble_y", newY).apply();
+                } catch (RuntimeException ex) {
+                    reportError("Düğme konumu düzeltilemedi", ex);
+                }
+            }
         }
     }
 
@@ -99,6 +190,7 @@ public class MacroAccessibilityService extends AccessibilityService {
     }
 
     private void clear() {
+        shuttingDown = true;
         stop("Hizmet kapandı");
         handler.removeCallbacks(refresh);
         hideMarkers();
@@ -157,8 +249,11 @@ public class MacroAccessibilityService extends AccessibilityService {
         FrameLayout.LayoutParams dot=new FrameLayout.LayoutParams(dp(21),dp(21),Gravity.TOP|Gravity.RIGHT);
         button.addView(bubbleText,dot);
         bubble=button;
-        bubblePosition=layout(dp(62),dp(62),
-            prefs.getInt("bubble_x",dp(8)),prefs.getInt("bubble_y",dp(155)));
+        int safeX = bound(prefs.getInt("bubble_x", dp(18)), dp(8),
+            Math.max(dp(8), width() - dp(70)));
+        int safeY = bound(prefs.getInt("bubble_y", dp(155)), dp(55),
+            Math.max(dp(55), height() - dp(125)));
+        bubblePosition = layout(dp(62), dp(62), safeX, safeY);
         wm.addView(bubble,bubblePosition);
         bubble.setOnTouchListener(new View.OnTouchListener() {
             float downX,downY;
@@ -380,9 +475,12 @@ public class MacroAccessibilityService extends AccessibilityService {
     }
 
     private void hideMenu() {
-        if (!menuShowing) return;
-        remove(menu);
-        menuShowing = false;
+        if (menuShowing) {
+            remove(menu);
+            menuShowing = false;
+        }
+        // X must close the menu only, never the always-on LK bubble.
+        if (!shuttingDown) ensureBubbleVisible();
     }
 
     private void showMarkers() {
@@ -608,6 +706,9 @@ public class MacroAccessibilityService extends AccessibilityService {
     private void remove(View v) {
         if (v == null || wm == null) return;
         try { wm.removeView(v); } catch (IllegalArgumentException ignored) { }
+        catch (android.view.WindowManager.BadTokenException error) {
+            Log.w("LKMacro", "Overlay zaten kapatılmış", error);
+        }
     }
 
     private int bound(int n, int min, int max) {

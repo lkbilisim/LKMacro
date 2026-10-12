@@ -35,6 +35,10 @@ jobs:
           file app/src/main/res/drawable-nodpi/lk_launcher_icon.webp
       - name: APK derle
         run: gradle --no-daemon :app:assembleDebug
+      - name: APK imzasini ve paket yapisini dogrula
+        run: |
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs app/build/outputs/apk/debug/app-debug.apk
+          unzip -t app/build/outputs/apk/debug/app-debug.apk | tail -1
       - name: APK dosyasini yukle
         uses: actions/upload-artifact@v4
         with:

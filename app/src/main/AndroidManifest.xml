@@ -6,7 +6,7 @@
         android:icon="@drawable/lk_launcher_icon"
         android:roundIcon="@drawable/lk_launcher_icon"
         android:supportsRtl="true"
-        android:theme="@android:style/Theme.Material.Light.NoActionBar">
+        android:theme="@android:style/Theme.Material.NoActionBar">
         <activity android:name=".MainActivity" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>

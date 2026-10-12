@@ -19,6 +19,8 @@ import android.view.WindowManager;
 import android.view.accessibility.AccessibilityEvent;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -140,119 +142,156 @@ public class MacroAccessibilityService extends AccessibilityService {
     }
 
     private void makeBubble() {
-        bubbleText = text("M", 22, true);
+        FrameLayout button=new FrameLayout(this);
+        button.setBackground(UiKit.gradient(this,
+            new int[]{0xff10366c, 0xff0c2349}, 45, 0xff58d6ff, 2));
+        button.setElevation(dp(10));
+        ImageView logo=UiKit.logo(this,50);
+        FrameLayout.LayoutParams imageParams=new FrameLayout.LayoutParams(dp(48),dp(48),Gravity.CENTER);
+        button.addView(logo,imageParams);
+        bubbleText=text("●",13,true);
+        bubbleText.setTextColor(0xff83e6ff);
         bubbleText.setGravity(Gravity.CENTER);
-        bubbleText.setBackground(bg(Color.rgb(20, 54, 91), 40));
-        bubble = bubbleText;
-        bubblePosition = layout(dp(54), dp(54),
-            prefs.getInt("bubble_x", dp(8)),
-            prefs.getInt("bubble_y", dp(155)));
-        wm.addView(bubble, bubblePosition);
+        bubbleText.setBackground(UiKit.gradient(this,
+            new int[]{0xff0c2d55,0xff071830},20,0xff419de5,1));
+        FrameLayout.LayoutParams dot=new FrameLayout.LayoutParams(dp(21),dp(21),Gravity.TOP|Gravity.RIGHT);
+        button.addView(bubbleText,dot);
+        bubble=button;
+        bubblePosition=layout(dp(62),dp(62),
+            prefs.getInt("bubble_x",dp(8)),prefs.getInt("bubble_y",dp(155)));
+        wm.addView(bubble,bubblePosition);
         bubble.setOnTouchListener(new View.OnTouchListener() {
-            float downX, downY;
-            int startX, startY;
+            float downX,downY;
+            int startX,startY;
             boolean moving;
             @Override public boolean onTouch(View v, MotionEvent e) {
-                switch (e.getActionMasked()) {
+                switch(e.getActionMasked()) {
                     case MotionEvent.ACTION_DOWN:
-                        downX = e.getRawX();
-                        downY = e.getRawY();
-                        startX = bubblePosition.x;
-                        startY = bubblePosition.y;
-                        moving = false;
+                        downX=e.getRawX();
+                        downY=e.getRawY();
+                        startX=bubblePosition.x;
+                        startY=bubblePosition.y;
+                        moving=false;
                         return true;
                     case MotionEvent.ACTION_MOVE:
-                        int dx = Math.round(e.getRawX() - downX);
-                        int dy = Math.round(e.getRawY() - downY);
-                        if (Math.abs(dx) + Math.abs(dy) > dp(8)) moving = true;
-                        if (moving) {
-                            bubblePosition.x = bound(startX + dx, 0, Math.max(0, width() - dp(54)));
-                            bubblePosition.y = bound(startY + dy, 0, Math.max(0, height() - dp(54)));
-                            wm.updateViewLayout(bubble, bubblePosition);
+                        int dx=Math.round(e.getRawX()-downX);
+                        int dy=Math.round(e.getRawY()-downY);
+                        if(Math.abs(dx)+Math.abs(dy)>dp(8))moving=true;
+                        if(moving){
+                            bubblePosition.x=bound(startX+dx,0,Math.max(0,width()-dp(62)));
+                            bubblePosition.y=bound(startY+dy,0,Math.max(0,height()-dp(62)));
+                            wm.updateViewLayout(bubble,bubblePosition);
                         }
                         return true;
                     case MotionEvent.ACTION_UP:
-                        if (moving) {
-                            prefs.edit().putInt("bubble_x", bubblePosition.x)
-                                .putInt("bubble_y", bubblePosition.y).apply();
-                        } else {
-                            if (menuShowing) hideMenu();
+                        if(moving) prefs.edit().putInt("bubble_x",bubblePosition.x)
+                            .putInt("bubble_y",bubblePosition.y).apply();
+                        else {
+                            if(menuShowing)hideMenu();
                             else showMenu();
                         }
                         return true;
-                    default:
-                        return true;
+                    default:return true;
                 }
             }
         });
     }
 
-    private void makeMenu() {
-        menu = new LinearLayout(this);
-        menu.setOrientation(LinearLayout.VERTICAL);
-        menu.setPadding(dp(12), dp(12), dp(12), dp(12));
-        menu.setBackground(bg(Color.rgb(21, 36, 55), 14));
+    private TextView overlayText(String text,int size,boolean weight){
+        TextView v=UiKit.label(this,text,size,Color.WHITE,weight);
+        v.setGravity(Gravity.CENTER_VERTICAL);
+        return v;
+    }
 
-        menu.addView(text("LK MAKRO  •  Kontrol", 16, true));
-        message = text("Hazır", 12, false);
-        message.setPadding(0, dp(6), 0, dp(6));
+    private void makeMenu() {
+        menu=new LinearLayout(this);
+        menu.setOrientation(LinearLayout.VERTICAL);
+        menu.setPadding(dp(15),dp(14),dp(15),dp(15));
+        menu.setBackground(UiKit.gradient(this,
+            new int[]{0xf5081a37,0xf20a1429,0xf5081022},
+            21,0xff4872ad,1.3f));
+        menu.setElevation(dp(14));
+        LinearLayout header=new LinearLayout(this);
+        header.setGravity(Gravity.CENTER_VERTICAL);
+        ImageView emblem=UiKit.logo(this,39);
+        header.addView(emblem,new LinearLayout.LayoutParams(dp(39),dp(39)));
+        TextView title=overlayText("  LK Makro",19,true);
+        header.addView(title,new LinearLayout.LayoutParams(0,dp(44),1f));
+        TextView close=UiKit.center(this,"×",26,0xffc8daff,true);
+        close.setBackground(UiKit.field(this,11));
+        header.addView(close,new LinearLayout.LayoutParams(dp(38),dp(38)));
+        close.setOnClickListener(v->hideMenu());
+        menu.addView(header);
+        message=overlayText("●  Hazır",12,false);
+        message.setTextColor(0xff81d7f5);
+        message.setPadding(dp(3),dp(8),0,dp(11));
         menu.addView(message);
 
-        menu.addView(text("Kaç tane tuş açılsın?", 14, true));
-        LinearLayout countRow = new LinearLayout(this);
+        menu.addView(overlayText("Kaç tane tuş açılsın?",14,true));
+        LinearLayout countRow=new LinearLayout(this);
         countRow.setGravity(Gravity.CENTER);
-        Button less = new Button(this);
+        countRow.setPadding(dp(4),dp(6),dp(4),dp(6));
+        countRow.setBackground(UiKit.field(this,13));
+        Button less=new Button(this);
         less.setText("−");
+        less.setAllCaps(false);
         less.setTextSize(20);
-        countRow.addView(less, new LinearLayout.LayoutParams(0, dp(44), 1f));
-        pointCountLabel = text(String.valueOf(getPointCount()), 22, true);
-        pointCountLabel.setGravity(Gravity.CENTER);
-        countRow.addView(pointCountLabel, new LinearLayout.LayoutParams(0, dp(44), 1f));
-        Button more = new Button(this);
+        less.setTextColor(Color.WHITE);
+        less.setBackground(UiKit.gradient(this,new int[]{0xff183b70,0xff153056},10,0xff4474b8,1));
+        countRow.addView(less,new LinearLayout.LayoutParams(dp(48),dp(40)));
+        pointCountLabel=UiKit.center(this,String.valueOf(getPointCount()),22,0xff64e5ff,true);
+        countRow.addView(pointCountLabel,new LinearLayout.LayoutParams(0,dp(42),1f));
+        Button more=new Button(this);
         more.setText("+");
+        more.setAllCaps(false);
         more.setTextSize(20);
-        countRow.addView(more, new LinearLayout.LayoutParams(0, dp(44), 1f));
-        less.setOnClickListener(v -> setPointCount(getPointCount() - 1));
-        more.setOnClickListener(v -> setPointCount(getPointCount() + 1));
-        menu.addView(countRow);
-        pointCountLabel.setOnClickListener(v -> promptPointCount());
-        addAction("Sayı girerek tuş seç", this::promptPointCount);
-        addAction("Noktaları yerleştir", () -> {
-            if (running) {
-                toast("Önce makroyu durdur.");
-                return;
-            }
+        more.setTextColor(Color.WHITE);
+        more.setBackground(UiKit.gradient(this,new int[]{0xff183b70,0xff153056},10,0xff4474b8,1));
+        countRow.addView(more,new LinearLayout.LayoutParams(dp(48),dp(40)));
+        less.setOnClickListener(v->setPointCount(getPointCount()-1));
+        more.setOnClickListener(v->setPointCount(getPointCount()+1));
+        LinearLayout.LayoutParams countLp=new LinearLayout.LayoutParams(-1,dp(53));
+        countLp.bottomMargin=dp(8);
+        menu.addView(countRow,countLp);
+        pointCountLabel.setOnClickListener(v->promptPointCount());
+        addAction("▦   Sayı Girerek Tuş Seç",this::promptPointCount);
+        addAction("◎   Noktaları Yerleştir",()->{
+            if(running){toast("Önce makroyu durdur.");return;}
             showMarkers();
             hideMenu();
-            toast(getPointCount() + " nokta açıldı. Sırayla yerleştir, M üzerinden kaydet.");
+            toast(getPointCount()+" nokta açıldı. İşaretleri sürükleyip M üzerinden kaydet.");
         });
-        addAction("Konumları kaydet", () -> {
-            if (!markersShowing) {
-                toast("Önce noktaları yerleştir.");
-                return;
-            }
+        addAction("▣   Konumları Kaydet",()->{
+            if(!markersShowing){toast("Önce noktaları yerleştir.");return;}
             saveMarkers();
             hideMarkers();
             toast("Noktalar kaydedildi.");
         });
-        addAction("▶  BAŞLAT", this::start);
-        addAction("■  DURDUR", () -> stop("Elle durduruldu"));
-        menu.addView(text("Saldırı ve mola sürelerini uygulamanın ayar ekranından belirleyebilirsin.", 11, false));
-        menuPosition = layout(dp(298), WindowManager.LayoutParams.WRAP_CONTENT, dp(65), dp(140));
+        addAction("▶   Başlat",this::start);
+        addAction("■   Durdur",()->stop("Elle durduruldu"));
+        TextView foot=overlayText("Süreleri uygulamanın Ayarlar ekranında değiştirebilirsin.",11,false);
+        foot.setTextColor(0xff99b3d4);
+        foot.setPadding(dp(4),dp(5),dp(3),0);
+        menu.addView(foot);
+        menuPosition=layout(dp(309),WindowManager.LayoutParams.WRAP_CONTENT,dp(66),dp(140));
     }
 
     private void addAction(String title, Runnable fn) {
-        Button b = new Button(this);
-        b.setText(title);
-        b.setAllCaps(false);
-        b.setTextSize(14);
-        b.setTextColor(Color.WHITE);
-        b.setBackground(bg(Color.rgb(51, 81, 118), 7));
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT, dp(46));
-        lp.bottomMargin = dp(6);
-        menu.addView(b, lp);
-        b.setOnClickListener(v -> fn.run());
+        TextView b=UiKit.center(this,title,14,Color.WHITE,true);
+        b.setGravity(Gravity.CENTER_VERTICAL|Gravity.LEFT);
+        b.setPadding(dp(15),0,dp(7),0);
+        boolean start=title.contains("Başlat");
+        boolean stop=title.contains("Durdur");
+        if(start)b.setBackground(UiKit.gradient(this,
+            new int[]{0xff4865f0,0xff2baff2,0xff4ae0dd},12,0xff90dafa,1));
+        else if(stop)b.setBackground(UiKit.gradient(this,
+            new int[]{0xff603447,0xff3b2638},12,0xffb46275,1));
+        else b.setBackground(UiKit.gradient(this,
+            new int[]{0xff172c4c,0xff0d2039},12,0xff405d88,1));
+        LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,dp(46));
+        lp.bottomMargin=dp(7);
+        menu.addView(b,lp);
+        b.setOnClickListener(v->fn.run());
     }
 
     private int getPointCount() {
@@ -331,10 +370,10 @@ public class MacroAccessibilityService extends AccessibilityService {
     private void showMenu() {
         if (menu == null || menuShowing) return;
         if (pointCountLabel != null) pointCountLabel.setText(String.valueOf(getPointCount()));
-        int x = bubblePosition.x + dp(54);
-        if (x + dp(298) > width()) x = bubblePosition.x - dp(298);
-        menuPosition.x = bound(x, 0, Math.max(0, width() - dp(298)));
-        menuPosition.y = bound(bubblePosition.y, 0, Math.max(0, height() - dp(505)));
+        int x = bubblePosition.x + dp(62);
+        if (x + dp(309) > width()) x = bubblePosition.x - dp(309);
+        menuPosition.x = bound(x, 0, Math.max(0, width() - dp(309)));
+        menuPosition.y = bound(bubblePosition.y, 0, Math.max(0, height() - dp(555)));
         wm.addView(menu, menuPosition);
         menuShowing = true;
         updateMessage();
@@ -356,7 +395,9 @@ public class MacroAccessibilityService extends AccessibilityService {
             final int index = i;
             TextView circle = text(String.valueOf(i + 1), i < 9 ? 21 : 16, true);
             circle.setGravity(Gravity.CENTER);
-            circle.setBackground(bg(COLORS[i % COLORS.length], 30));
+            circle.setBackground(UiKit.gradient(this, new int[]{0xee143a7b,0xee0b2249}, 40, 0xff52daff, 2.5f));
+            circle.setTextColor(0xffffffff);
+            circle.setElevation(dp(7));
             int initialX = dp(30) + (i % columns) * dp(57);
             int initialY = dp(180) + (i / columns) * dp(57);
             int cx = prefs.getInt("x" + i, initialX);
@@ -437,7 +478,8 @@ public class MacroAccessibilityService extends AccessibilityService {
             getRangeMax("pause_interval_min_minutes", "pause_interval_max_minutes", 4, 8));
         label = "Çalışıyor";
         bubbleText.setText("▶");
-        bubbleText.setBackground(bg(Color.rgb(23, 126, 82), 40));
+        bubbleText.setTextColor(0xffb3ffcb);
+        bubbleText.setBackground(UiKit.gradient(this,new int[]{0xff175f46,0xff113e38},20,0xff62e9b0,1));
         handler.removeCallbacks(next);
         handler.post(next);
         toast("Başladı. Durdurmak için M / ▶ simgesine dokun.");
@@ -450,8 +492,9 @@ public class MacroAccessibilityService extends AccessibilityService {
         nextCycleTime = 0;
         handler.removeCallbacks(next);
         if (bubbleText != null) {
-            bubbleText.setText("M");
-            bubbleText.setBackground(bg(Color.rgb(20, 54, 91), 40));
+            bubbleText.setText("●");
+            bubbleText.setTextColor(0xff83e6ff);
+            bubbleText.setBackground(UiKit.gradient(this,new int[]{0xff0c2d55,0xff071830},20,0xff419de5,1));
         }
         updateMessage();
     }
@@ -504,7 +547,7 @@ public class MacroAccessibilityService extends AccessibilityService {
         if (!running) return;
         int min = getRangeMin("min_seconds", "max_seconds", 45);
         int max = getRangeMax("min_seconds", "max_seconds", 45, 90);
-        long wait = randomSeconds(min, max);
+        long wait = prefs.getBoolean("random_enabled", true) ? randomSeconds(min, max) : (long)min * 1000L;
         long now = SystemClock.uptimeMillis();
         if (now >= nextPauseTime) {
             long rest = randomMinutes(

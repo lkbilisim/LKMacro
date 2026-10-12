@@ -83,6 +83,12 @@ public class MacroAccessibilityService extends AccessibilityService {
         return service != null && service.wm != null && !service.shuttingDown;
     }
 
+    public static boolean isBubbleVisible() {
+        MacroAccessibilityService service = active;
+        return service != null && !service.shuttingDown
+            && service.bubble != null && service.bubble.isAttachedToWindow();
+    }
+
     /** Safe to invoke from the Activity even when the user closed the menu with X. */
     public static boolean restoreBubble() {
         MacroAccessibilityService service = active;

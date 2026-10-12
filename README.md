@@ -1,10 +1,10 @@
-# LK Makro v1.2 — Android
+# LK Makro v1.3 — Android
 
 Android Erişilebilirlik hizmetiyle, kullanıcının seçtiği sayıda noktaya sırayla dokunan, yüzen M kontrollü makro.
 
 ## Tuş sayısını belirle
 
-Uygulamayı açınca **“Kaç tane tuş açılsın?”** alanından 1–100 arası nokta seç. Başlangıç değeri 3; artık sadece üç noktayla sınırlı değil. **Ayarları kaydet**. İstersen oyun içindeki yüzen **M → + / −** düğmelerinden de tuş sayısını değiştir.
+Ana ekranda tuş sayısı sorulmaz; burası yalnızca süre ve mola ayarları içindir. Oyundayken yüzen **M** düğmesine dokun, **“Sayı girerek tuş seç”** seçeneğine bas ve açılan soruya **1–100** arasında istediğin tuş sayısını yaz. Başlangıç değeri 3'tür. Dilersen M içindeki **+ / −** ile birer birer de değiştirebilirsin.
 
 **M → Noktaları yerleştir** ile seçilen sayı kadar numaralı ve sürüklenebilir nokta oluştur; istediğin butonların üzerine yerleştir. **M → Konumları kaydet** ile tamamla. Makro sırayla **1 → 2 → 3 → 4 → ... → N** tuşlarına basıp son dokunuştan sonra bir sonraki tur için rastgele bekleme seçer. Tuş sayısı değişince koordinatları yeniden kaydetmek gerekir. Mevcut ilk üç koordinat, sayı aynı kaldığı sürece korunur.
 

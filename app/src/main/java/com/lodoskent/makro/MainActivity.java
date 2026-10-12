@@ -2,6 +2,8 @@ package com.lodoskent.makro;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.ClipboardManager;
+import android.content.ClipData;
 import android.content.SharedPreferences;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
@@ -204,6 +206,12 @@ public class MainActivity extends Activity {
         info.addView(status);
         refreshStatus();
         addCard(contentArea,info);
+        String crash=prefs.getString("last_service_error","");
+        if(!crash.isEmpty()) {
+            TextView diag=button("⚠  Son Hata Kaydını Kopyala",false);
+            contentArea.addView(diag,columnParams(-1,d(46),8));
+            diag.setOnClickListener(v->copyDiagnostics());
+        }
         addSpace(contentArea,6);
         TextView cta=button("Başlayalım   →",true);
         contentArea.addView(cta,columnParams(-1,d(57),13));
@@ -374,7 +382,7 @@ public class MainActivity extends Activity {
         addSpace(contentArea,17);
         contentArea.addView(UiKit.center(this,"LK Makro",30,Color.WHITE,true));
         addSpace(contentArea,3);
-        contentArea.addView(UiKit.center(this,"PREMIUM  •  v2.1",12,UiKit.CYAN,true));
+        contentArea.addView(UiKit.center(this,"PREMIUM  •  v2.2",12,UiKit.CYAN,true));
         addSpace(contentArea,28);
         LinearLayout card=card();
         card.addView(UiKit.label(this,"Otomatik Dokunuş",17,Color.WHITE,true));
@@ -388,6 +396,17 @@ public class MainActivity extends Activity {
         TextView cta=button("⚙   Ayarlara Git",true);
         contentArea.addView(cta,columnParams(-1,d(55),4));
         cta.setOnClickListener(v->build(1));
+    }
+
+    private void copyDiagnostics() {
+        String error=prefs.getString("last_service_error","");
+        if(error.isEmpty()) {
+            Toast.makeText(this,"Henüz kayıtlı uygulama çökmesi yok.",Toast.LENGTH_SHORT).show();
+            return;
+        }
+        ClipboardManager clip=(ClipboardManager)getSystemService(CLIPBOARD_SERVICE);
+        clip.setPrimaryClip(ClipData.newPlainText("LK Makro hata kaydı",error));
+        Toast.makeText(this,"Hata kaydı kopyalandı.",Toast.LENGTH_SHORT).show();
     }
 
     private void restoreFloatingButton() {
@@ -413,7 +432,7 @@ public class MainActivity extends Activity {
         } else {
             String lastError=prefs.getString("last_service_error","");
             status.setText("◌  Hizmet bağlı değil. Erişilebilirlikten aç."
-                + (lastError.isEmpty()?"":"\nSon hata: "+lastError));
+                + (lastError.isEmpty()?"":"\nHata kaydı var. Kopyala ile bana ilet."));
         }
     }
 

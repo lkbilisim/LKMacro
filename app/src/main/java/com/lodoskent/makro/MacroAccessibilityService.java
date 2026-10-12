@@ -2,8 +2,15 @@ package com.lodoskent.makro;
 
 import android.accessibilityservice.AccessibilityService;
 import android.app.AlertDialog;
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.accessibilityservice.GestureDescription;
 import android.content.SharedPreferences;
+import android.content.Intent;
+import android.content.pm.ServiceInfo;
+import android.os.Build;
 import android.graphics.Color;
 import android.graphics.Path;
 import android.graphics.Point;
@@ -53,6 +60,8 @@ public class MacroAccessibilityService extends AccessibilityService {
     private int generation = 0;
     private long lastRecoveryAttempt = 0;
     private boolean shuttingDown = false;
+    private static final String CHANNEL = "lk_macro_session";
+    private static final int NOTIFICATION_ID = 207;
     private boolean menuShowing, markersShowing, running;
     private long nextCycleTime, nextPauseTime;
     private int cycles;
@@ -97,6 +106,36 @@ public class MacroAccessibilityService extends AccessibilityService {
         return true;
     }
 
+    private void keepServiceForeground() {
+        try {
+            NotificationManager nm=(NotificationManager)getSystemService(NOTIFICATION_SERVICE);
+            NotificationChannel channel=new NotificationChannel(CHANNEL,
+                "LK Makro arka plan hizmeti",NotificationManager.IMPORTANCE_LOW);
+            channel.setDescription("Yüzen LK kontrolü etkin kalır");
+            nm.createNotificationChannel(channel);
+            Intent open=new Intent(this,MainActivity.class);
+            open.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            PendingIntent pending=PendingIntent.getActivity(this,0,open,
+                PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);
+            Notification note=new Notification.Builder(this,CHANNEL)
+                .setContentTitle("LK Makro etkin")
+                .setContentText("Yüzen LK düğmesi ve dokunma hizmeti çalışıyor")
+                .setSmallIcon(android.R.drawable.ic_menu_manage)
+                .setContentIntent(pending)
+                .setOngoing(true)
+                .setCategory(Notification.CATEGORY_SERVICE)
+                .build();
+            if(Build.VERSION.SDK_INT >= 34) {
+                startForeground(NOTIFICATION_ID,note,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
+            } else startForeground(NOTIFICATION_ID,note);
+            Log.i("LKMacro","Foreground notification started");
+        } catch(RuntimeException ex) {
+            // Do not crash the accessibility service if MIUI restricts foreground work.
+            Log.w("LKMacro","Foreground service could not start",ex);
+        }
+    }
+
     private void reportError(String phase, RuntimeException exception) {
         Log.e("LKMacro", phase, exception);
         if (prefs != null) {
@@ -122,6 +161,7 @@ public class MacroAccessibilityService extends AccessibilityService {
         } catch (RuntimeException ex) {
             reportError("LK paneli oluşturulamadı", ex);
         }
+        keepServiceForeground();
         handler.removeCallbacks(refresh);
         handler.post(refresh);
         Log.i("LKMacro", "Accessibility service connected; bubble="+(bubble != null && bubble.isAttachedToWindow()));
@@ -198,6 +238,8 @@ public class MacroAccessibilityService extends AccessibilityService {
 
     private void clear() {
         shuttingDown = true;
+        try { stopForeground(STOP_FOREGROUND_REMOVE); }
+        catch (RuntimeException error) { Log.w("LKMacro","Notification cleanup",error); }
         stop("Hizmet kapandı");
         handler.removeCallbacks(refresh);
         hideMarkers();

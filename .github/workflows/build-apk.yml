@@ -23,13 +23,13 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.10.2'
-      - name: Android SDK
-        uses: android-actions/setup-android@v3
-      - name: Android 35 yukle
-        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - name: Android SDK paketlerini kur
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$ANDROID_HOME" "platforms;android-35" "build-tools;35.0.0"
       - name: APK derle
         run: gradle --no-daemon :app:assembleDebug
-      - name: APK indirilebilir artifact
+      - name: APK dosyasini yukle
         uses: actions/upload-artifact@v4
         with:
           name: LDK-Makro-APK

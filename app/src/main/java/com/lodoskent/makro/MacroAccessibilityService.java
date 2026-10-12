@@ -469,15 +469,25 @@ public class MacroAccessibilityService extends AccessibilityService {
     }
 
     private void showMenu() {
-        if (menu == null || menuShowing) return;
-        if (pointCountLabel != null) pointCountLabel.setText(String.valueOf(getPointCount()));
-        int x = bubblePosition.x + dp(62);
-        if (x + dp(309) > width()) x = bubblePosition.x - dp(309);
-        menuPosition.x = bound(x, 0, Math.max(0, width() - dp(309)));
-        menuPosition.y = bound(bubblePosition.y, 0, Math.max(0, height() - dp(555)));
-        wm.addView(menu, menuPosition);
-        menuShowing = true;
-        updateMessage();
+        if (shuttingDown || menuShowing || wm == null) return;
+        try {
+            ensureBubbleVisible();
+            if (menu == null || menuPosition == null) makeMenu();
+            if (pointCountLabel != null)
+                pointCountLabel.setText(String.valueOf(getPointCount()));
+            int x = bubblePosition.x + dp(62);
+            if (x + dp(309) > width()) x = bubblePosition.x - dp(309);
+            menuPosition.x = bound(x, 0, Math.max(0, width() - dp(309)));
+            menuPosition.y = bound(bubblePosition.y, 0,
+                Math.max(0, height() - dp(555)));
+            wm.addView(menu, menuPosition);
+            menuShowing = true;
+            updateMessage();
+        } catch (RuntimeException ex) {
+            menuShowing = false;
+            reportError("LK kontrol paneli açılırken hata", ex);
+            toast("Panel açılamadı. Ana ekrandan LK düğmesini geri getir.");
+        }
     }
 
     private void hideMenu() {

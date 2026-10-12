@@ -17,7 +17,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 public class MainActivity extends Activity {
-    private EditText minimum, maximum, gap, countInput;
+    private EditText minimum, maximum, gap;
     private EditText pauseMin, pauseMax, restMin, restMax;
     private TextView state;
     private SharedPreferences prefs;
@@ -35,10 +35,7 @@ public class MainActivity extends Activity {
         root.addView(text("LK MAKRO", 26, true));
         root.addView(text("İstediğin sayıda sıralı dokunma noktası", 15, false));
         root.addView(text(" ", 16, false));
-        root.addView(text("Kaç tane tuş açılsın?", 17, true));
-        root.addView(text("1 ile 100 arasında tuş sayısı yaz. M panelinden de + / − ile değiştirebilirsin. Noktaları yeniden yerleştirip kaydetmen gerekir.", 14, false));
-        countInput = number(prefs.getInt("point_count", 3));
-        root.addView(countInput);
+        root.addView(text("Tuş sayısını oyun içindeki M menüsünden belirle.", 14, true));
         root.addView(text("Son dokunuştan sonraki rastgele bekleme", 17, true));
         root.addView(text("Buraya yazdığın iki sayı arasında her tur yeniden rastgele süre seçilir. Sabit 45–90 saniye sınırı yok.", 14, false));
         minimum = number(prefs.getInt("min_seconds", 45));
@@ -101,7 +98,6 @@ public class MainActivity extends Activity {
 
     private void save() {
         try {
-            int count = Integer.parseInt(countInput.getText().toString().trim());
             int min = Integer.parseInt(minimum.getText().toString().trim());
             int max = Integer.parseInt(maximum.getText().toString().trim());
             int ms = Integer.parseInt(gap.getText().toString().trim());
@@ -109,10 +105,6 @@ public class MainActivity extends Activity {
             int pauseTo = Integer.parseInt(pauseMax.getText().toString().trim());
             int restFrom = Integer.parseInt(restMin.getText().toString().trim());
             int restTo = Integer.parseInt(restMax.getText().toString().trim());
-            if (count < 1 || count > 100) {
-                Toast.makeText(this, "Tuş sayısı 1–100 arasında olmalı.", Toast.LENGTH_LONG).show();
-                return;
-            }
             if (min <= 0 || max < min) {
                 Toast.makeText(this, "Saldırı aralığında pozitif sayılar gir. En çok, en azdan küçük olamaz.", Toast.LENGTH_LONG).show();
                 return;
@@ -125,9 +117,7 @@ public class MainActivity extends Activity {
                 Toast.makeText(this, "Mola dakika aralıklarında pozitif sayılar gir. En çok, en azdan küçük olamaz.", Toast.LENGTH_LONG).show();
                 return;
             }
-            boolean countChanged = count != prefs.getInt("point_count", 3);
             SharedPreferences.Editor edit = prefs.edit()
-                .putInt("point_count", count)
                 .putInt("min_seconds", min)
                 .putInt("max_seconds", max)
                 .putInt("step_ms", ms)
@@ -135,7 +125,6 @@ public class MainActivity extends Activity {
                 .putInt("pause_interval_max_minutes", pauseTo)
                 .putInt("rest_min_minutes", restFrom)
                 .putInt("rest_max_minutes", restTo);
-            if (countChanged) edit.putBoolean("points_set", false);
             edit.apply();
             Toast.makeText(this, "Ayarlar kaydedildi.", Toast.LENGTH_SHORT).show();
         } catch (NumberFormatException ex) {

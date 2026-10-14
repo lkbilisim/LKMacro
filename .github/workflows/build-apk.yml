@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -45,3 +45,14 @@ jobs:
           name: LK-Makro-APK
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+
+      - name: APK dosyasini GitHub Surumune yukle
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp app/build/outputs/apk/debug/app-debug.apk LK_Makro_v2.3_Akilli_Gorus.apk
+          if gh release view v2.3 >/dev/null 2>&1; then
+            gh release upload v2.3 LK_Makro_v2.3_Akilli_Gorus.apk --clobber
+          else
+            gh release create v2.3 LK_Makro_v2.3_Akilli_Gorus.apk --target "${{ github.sha }}" --title "LK Makro v2.3 — Akıllı Görüş" --notes "Cihaz içi OCR ile ekranı okuma, 11 görevli kalıcı rastgele planlayıcı ve altın harcamadan gözlem modu. Android 13 emülatöründe erişilebilirlik hizmeti test edildi. Oyun içi otomatik görev yürütme henüz etkin değil."
+          fi

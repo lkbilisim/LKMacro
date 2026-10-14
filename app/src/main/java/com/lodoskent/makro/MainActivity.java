@@ -96,6 +96,7 @@ public class MainActivity extends Activity {
         setContentView(root);
         if(page==0)home();
         else if(page==1)settingsPage();
+        else if(page==3)smartPage();
         else about();
     }
 
@@ -122,6 +123,7 @@ public class MainActivity extends Activity {
         bar.setBackground(UiKit.gradient(this,new int[]{0xee0c1a34,0xf1081327},18,0xff314a73,1));
         navTab(bar,"⌂","Ana Sayfa",0);
         navTab(bar,"⚙","Ayarlar",1);
+        navTab(bar,"◎","Akıllı",3);
         navTab(bar,"ⓘ","Hakkında",2);
         return bar;
     }
@@ -213,6 +215,9 @@ public class MainActivity extends Activity {
             diag.setOnClickListener(v->copyDiagnostics());
         }
         addSpace(contentArea,6);
+        TextView smart=button("🧠  Akıllı Görüş ve Görevler",true);
+        contentArea.addView(smart,columnParams(-1,d(56),9));
+        smart.setOnClickListener(v->build(3));
         TextView cta=button("Başlayalım   →",true);
         contentArea.addView(cta,columnParams(-1,d(57),13));
         cta.setOnClickListener(v->build(1));
@@ -374,6 +379,96 @@ public class MainActivity extends Activity {
         }
     }
 
+    /** v2.3: read-only OCR and persistent, user-controllable task schedule. */
+    private void smartPage() {
+        contentArea.addView(UiKit.label(this,"◎  Akıllı Görüş",25,Color.WHITE,true));
+        addSpace(contentArea,6);
+        contentArea.addView(subtitle("İlk aşama: ekranı oku, görevleri tanı, hazır işleri sırala. Oyun içinde otomatik dokunma henüz kapalı."));
+        addSpace(contentArea,12);
+
+        LinearLayout protection=card();
+        protection.addView(UiKit.label(this,"🔒  ALTIN HARCAMA: 0",17,0xff83f5b3,true));
+        addSpace(protection,7);
+        protection.addView(subtitle("Altın, elmas, ücretli paket ve onaysız hızlandırma işlemleri otomasyona kapalıdır. Şahsi nişan görevleri de kapsam dışıdır."));
+        addCard(contentArea,protection);
+
+        LinearLayout scan=card();
+        scan.addView(UiKit.label(this,"👁  Son OCR taraması",17,UiKit.CYAN,true));
+        addSpace(scan,8);
+        String extracted=prefs.getString("smart_ocr_text","");
+        String error=prefs.getString("smart_ocr_error","");
+        long stamped=prefs.getLong("smart_ocr_when",0);
+        scan.addView(subtitle("Tarih: "+SmartPlanner.clock(stamped)));
+        addSpace(scan,6);
+        scan.addView(subtitle("Ekran: "+prefs.getString("smart_ocr_screen","Henüz taranmadı")));
+        if(!error.isEmpty()){
+            addSpace(scan,5);
+            scan.addView(UiKit.label(this,"Tarama hatası: "+error,13,0xffffaa99,false));
+        }
+        if(!extracted.isEmpty()){
+            addSpace(scan,8);
+            TextView content=UiKit.label(this,extracted.length()>1200
+                ? extracted.substring(0,1200)+" …":extracted,12,0xffd5e6ff,false);
+            content.setTextIsSelectable(true);
+            scan.addView(content);
+        }
+        addSpace(scan,10);
+        TextView note=UiKit.label(this,"Oyunu aç → yüzen LK düğmesi → 'Ekranı OCR ile Oku'. Ekran görüntüsü kaydedilmez; tanınan metin yerel olarak saklanır.",12,0xff91c9e4,false);
+        scan.addView(note);
+        addCard(contentArea,scan);
+
+        SmartPlanner planner=new SmartPlanner(this);
+        long now=System.currentTimeMillis();
+        LinearLayout summary=card();
+        summary.addView(UiKit.label(this,"🔀  Rastgele Görev Planlayıcısı",17,UiKit.CYAN,true));
+        addSpace(summary,7);
+        summary.addView(subtitle("Hazır: "+planner.readyCount(now)+" / "+SmartPlanner.IDS.length
+            +"    •    Sonraki uyanma: "+SmartPlanner.clock(planner.nextWake(now))));
+        addSpace(summary,7);
+        summary.addView(subtitle("Yalnız hazır görevler seçilir. Bekleyen görevlere süre bitmeden yeniden gidilmez. Buradaki seçim henüz oyun içinde işlem başlatmaz."));
+        addSpace(summary,10);
+        TextView shuffle=button("⤨   Sıradaki Hazır Görevi Seç",true);
+        summary.addView(shuffle,columnParams(-1,d(50),8));
+        shuffle.setOnClickListener(v->{
+            SmartPlanner.Entry candidate=planner.nextRandom(System.currentTimeMillis());
+            Toast.makeText(this,candidate==null
+                ? "Hazır görev yok. Sürelerin dolmasını bekle."
+                : "Sıradaki görev: "+candidate.name+" (gözlem modu)",Toast.LENGTH_LONG).show();
+        });
+        addCard(contentArea,summary);
+
+        for(SmartPlanner.Entry entry:planner.all()){
+            LinearLayout item=card();
+            long time=System.currentTimeMillis();
+            item.addView(UiKit.label(this,entry.name,16,Color.WHITE,true));
+            addSpace(item,4);
+            item.addView(UiKit.label(this,
+                entry.ready(time)?"● Hazır":
+                entry.disabled?"○ Devre dışı":"◷ "+SmartPlanner.remaining(entry.readyAt,time)
+                   +" kaldı • "+SmartPlanner.clock(entry.readyAt),
+                12,entry.ready(time)?0xff79efce:0xffe4c88e,false));
+            addSpace(item,9);
+            LinearLayout controls=horizontal();
+            TextView quarter=UiKit.center(this,"15 dk",12,Color.WHITE,true);
+            TextView hour=UiKit.center(this,"1 saat",12,Color.WHITE,true);
+            TextView ready=UiKit.center(this,"Hazır",12,Color.WHITE,true);
+            TextView off=UiKit.center(this,entry.disabled?"Aç":"Kapat",12,Color.WHITE,true);
+            TextView[] bs={quarter,hour,ready,off};
+            for(TextView v:bs){
+                v.setBackground(UiKit.field(this,9));
+                LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,d(40),1);
+                lp.rightMargin=d(4);
+                controls.addView(v,lp);
+            }
+            quarter.setOnClickListener(v->{planner.waitFor(entry.id,15*60*1000L);build(3);});
+            hour.setOnClickListener(v->{planner.waitFor(entry.id,60*60*1000L);build(3);});
+            ready.setOnClickListener(v->{planner.ready(entry.id);build(3);});
+            off.setOnClickListener(v->{planner.disable(entry.id,!entry.disabled);build(3);});
+            item.addView(controls);
+            addCard(contentArea,item);
+        }
+    }
+
     private void about() {
         contentArea.setGravity(Gravity.CENTER_HORIZONTAL);
         addSpace(contentArea,35);
@@ -382,7 +477,7 @@ public class MainActivity extends Activity {
         addSpace(contentArea,17);
         contentArea.addView(UiKit.center(this,"LK Makro",30,Color.WHITE,true));
         addSpace(contentArea,3);
-        contentArea.addView(UiKit.center(this,"PREMIUM  •  v2.2",12,UiKit.CYAN,true));
+        contentArea.addView(UiKit.center(this,"PREMIUM  •  v2.3",12,UiKit.CYAN,true));
         addSpace(contentArea,28);
         LinearLayout card=card();
         card.addView(UiKit.label(this,"Otomatik Dokunuş",17,Color.WHITE,true));

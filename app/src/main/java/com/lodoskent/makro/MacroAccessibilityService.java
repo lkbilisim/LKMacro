@@ -62,7 +62,7 @@ public class MacroAccessibilityService extends AccessibilityService {
     private boolean shuttingDown = false;
     private static final String CHANNEL = "lk_macro_session";
     private static final int NOTIFICATION_ID = 207;
-    private boolean menuShowing, markersShowing, running;
+    private boolean menuShowing, markersShowing, running, scanning;
     private long nextCycleTime, nextPauseTime;
     private int cycles;
     private String label = "Hazır";
@@ -244,6 +244,7 @@ public class MacroAccessibilityService extends AccessibilityService {
         catch (RuntimeException error) { Log.w("LKMacro","Notification cleanup",error); }
         stop("Hizmet kapandı");
         handler.removeCallbacks(refresh);
+        scanning=false;
         hideMarkers();
         hideMenu();
         remove(bubble);
@@ -413,6 +414,7 @@ public class MacroAccessibilityService extends AccessibilityService {
             hideMarkers();
             toast("Noktalar kaydedildi.");
         });
+        addAction("👁  Ekranı OCR ile Oku (Akıllı)",this::scanScreen);
         addAction("▶   Başlat",this::start);
         addAction("■   Durdur",()->stop("Elle durduruldu"));
         TextView foot=overlayText("Süreleri uygulamanın Ayarlar ekranında değiştirebilirsin.",11,false);
@@ -420,6 +422,39 @@ public class MacroAccessibilityService extends AccessibilityService {
         foot.setPadding(dp(4),dp(5),dp(3),0);
         menu.addView(foot);
         menuPosition=layout(dp(309),WindowManager.LayoutParams.WRAP_CONTENT,dp(66),dp(140));
+    }
+
+    private void scanScreen() {
+        if(running){
+            toast("OCR için önce klasik makroyu durdur.");
+            return;
+        }
+        if(scanning){
+            toast("Ekran zaten okunuyor.");
+            return;
+        }
+        scanning=true;
+        hideMenu();
+        toast("Ekran okunuyor…");
+        handler.postDelayed(()->{
+            if(shuttingDown){scanning=false;return;}
+            SmartScreenReader.read(this,(recognized,error)->{
+                scanning=false;
+                if(shuttingDown)return;
+                String txt=recognized.length()>5000?recognized.substring(0,5000):recognized;
+                String screen=error.isEmpty()?SmartPlanner.detectScreen(txt):"Okunamadı";
+                boolean danger=SmartPlanner.hasGoldRisk(txt);
+                prefs.edit().putString("smart_ocr_text",txt)
+                    .putString("smart_ocr_error",error)
+                    .putString("smart_ocr_screen",screen)
+                    .putBoolean("smart_ocr_gold_risk",danger)
+                    .putLong("smart_ocr_when",System.currentTimeMillis()).apply();
+                if(!error.isEmpty())toast("OCR hatası: "+error);
+                else toast("OCR: "+screen
+                   +(danger?" • Altın/ücret uyarısı var!":"")
+                   +" • Sonuç Akıllı sekmesinde");
+            });
+        },900L);
     }
 
     private void addAction(String title, Runnable fn) {

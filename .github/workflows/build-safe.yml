@@ -42,8 +42,12 @@ jobs:
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK"
           unzip -t "$APK" | tail -1
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump permissions "$APK" | tee permission-report.txt
-          if grep -E "uses-permission:|uses-implied-permission:" permission-report.txt; then
-            echo "Unexpected permission detected. Refusing to publish!"
+          # AndroidX adds a package-private receiver-protection permission
+          # that cannot be granted by the user and exposes no sensitive data.
+          # Permit only that internal permission; reject every other request.
+          UNEXPECTED=$(grep -E "uses-permission:|uses-implied-permission:" permission-report.txt | grep -vF "com.lodoskent.makro.safe.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" || true)
+          if [ -n "$UNEXPECTED" ]; then
+            echo "Unexpected permission detected: $UNEXPECTED"
             exit 1
           fi
           if unzip -p "$APK" AndroidManifest.xml | strings | grep -E "BIND_ACCESSIBILITY_SERVICE|AccessibilityService"; then

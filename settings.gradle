@@ -14,3 +14,5 @@ dependencyResolutionManagement {
 }
 rootProject.name = 'LK_Makro'
 include ':app'
+
+include ':safe'

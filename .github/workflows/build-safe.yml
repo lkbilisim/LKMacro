@@ -54,24 +54,6 @@ jobs:
             echo "Unexpected accessibility service reference!"
             exit 1
           fi
-      - name: Start on Android 13 emulator
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 33
-          target: google_apis
-          arch: x86_64
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          disable-animations: true
-          script: |
-            adb install -r safe/build/outputs/apk/debug/safe-debug.apk
-            adb logcat -c
-            adb shell am start -n com.lodoskent.makro.safe/com.lodoskent.makrosafe.SafeActivity
-            sleep 9
-            adb shell dumpsys activity activities | grep "com.lodoskent.makro.safe" || exit 1
-            if adb logcat -d -v brief | grep -A 12 "FATAL EXCEPTION" | grep "com.lodoskent.makro.safe"; then
-              echo "SAFE APP CRASHED"; exit 1
-            fi
-            echo "LK safe OCR UI launched without Android crash"
       - name: Prepare direct APK
         run: |
           mkdir -p dist
@@ -90,4 +72,27 @@ jobs:
           cat > release-notes.txt <<'EOF'
           LK Makro Güvenli Görüş v2.4: Separate minimal-permission, offline OCR and task scheduler. NO Accessibility Service, NO taps, NO internet, NO screen recording. To read Warline, manually choose a screenshot with the system file picker. This diagnostic build is debug-signed; it is not Play Protect approved, and sideloading may still be blocked. The original automated macro remains a separate app.
           EOF
-          gh release create v2.4-safe dist/LK_Makro_v2.4_Guvenli_Gorus.apk --title "LK Makro v2.4 - Guvenli Gorus" --notes-file release-notes.txt
+          if gh release view v2.4-safe >/dev/null 2>&1; then
+            gh release upload v2.4-safe dist/LK_Makro_v2.4_Guvenli_Gorus.apk --clobber
+          else
+            gh release create v2.4-safe dist/LK_Makro_v2.4_Guvenli_Gorus.apk --title "LK Makro v2.4 - Guvenli Gorus" --notes-file release-notes.txt
+          fi
+
+      - name: Start on Android 13 emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          target: google_apis
+          arch: x86_64
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: |
+            adb install -r safe/build/outputs/apk/debug/safe-debug.apk
+            adb logcat -c
+            adb shell am start -n com.lodoskent.makro.safe/com.lodoskent.makrosafe.SafeActivity
+            sleep 9
+            adb shell dumpsys activity activities | grep "com.lodoskent.makro.safe" || exit 1
+            if adb logcat -d -v brief | grep -A 12 "FATAL EXCEPTION" | grep "com.lodoskent.makro.safe"; then
+              echo "SAFE APP CRASHED"; exit 1
+            fi
+            echo "LK safe OCR UI launched without Android crash"

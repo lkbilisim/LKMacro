@@ -46,13 +46,34 @@ jobs:
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
 
-      - name: APK dosyasini GitHub Surumune yukle
+      - name: Warline v2.5 guvenlik korumalarini denetle
+        run: |
+          test -f app/src/main/java/com/lodoskent/makro/WarlineAutoBot.java
+          grep -q "private boolean goldRisk" app/src/main/java/com/lodoskent/makro/WarlineAutoBot.java
+          grep -q "if(goldRisk(raw))" app/src/main/java/com/lodoskent/makro/WarlineAutoBot.java
+          grep -q 'armedTask=' app/src/main/java/com/lodoskent/makro/WarlineAutoBot.java
+          grep -q 'inWarline()' app/src/main/java/com/lodoskent/makro/WarlineAutoBot.java
+      - name: APK dosyasini dogrudan indirmeye sun
+        if: github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp app/build/outputs/apk/debug/app-debug.apk LK_Makro_v2.3_Akilli_Gorus.apk
-          if gh release view v2.3 >/dev/null 2>&1; then
-            gh release upload v2.3 LK_Makro_v2.3_Akilli_Gorus.apk --clobber
+          set -euo pipefail
+          mkdir -p dist
+          cp app/build/outputs/apk/debug/app-debug.apk dist/LK_Makro_v2.5_Akilli_Otomasyon.apk
+          cat > release-info.txt <<'EOF'
+          LK Makro v2.5 - OCR ile canli ve sinirli otomasyon pilotu.
+          Ekran Accessibility izniyle okunur. Kullanici akilli botu manuel baslatir.
+          Yalnizca iki kez OCR ile dogrulanan belirli ucretsiz eylemler:
+          Ganimet/Tumunu Al, bazi ittifak yardimlari, tamamlanan arastirmalari kapatma.
+          Radar, seferberlik, asker yetistirme ve tam ekranlar arasi gezinme
+          henuz aktif degildir; yanlis harcama riskini azaltmak icin devre disidir.
+          OCR ile 0 altin harcamayi kesin olarak garanti etmek mumkun degildir.
+          Uygulamayi dikkatli deneyin. Play Protect engelini zorla gecmeyin.
+          GitHub Actions debug sertifikasi oncekilerle ayni olmayabilir.
+          EOF
+          if gh release view v2.5-auto >/dev/null 2>&1; then
+            gh release upload v2.5-auto dist/LK_Makro_v2.5_Akilli_Otomasyon.apk --clobber
           else
-            gh release create v2.3 LK_Makro_v2.3_Akilli_Gorus.apk --target "${{ github.sha }}" --title "LK Makro v2.3 — Akıllı Görüş" --notes "Cihaz içi OCR ile ekranı okuma, 11 görevli kalıcı rastgele planlayıcı ve altın harcamadan gözlem modu. Android 13 emülatöründe erişilebilirlik hizmeti test edildi. Oyun içi otomatik görev yürütme henüz etkin değil."
+            gh release create v2.5-auto dist/LK_Makro_v2.5_Akilli_Otomasyon.apk --target "${{ github.sha }}" --title "LK Makro v2.5 Akilli Otomasyon" --notes-file release-info.txt
           fi

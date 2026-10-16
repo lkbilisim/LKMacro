@@ -71,4 +71,59 @@ public final class SmartScreenReader {
             callback.finished("","Ekran yakalama başlatılamadı: "+ex.getClass().getSimpleName());
         }
     }
+    public interface StructuredResult {
+        void finished(com.google.mlkit.vision.text.Text document, String error);
+    }
+
+    /** Reads OCR lines AND bounding boxes for user-approved screen actions. */
+    public static void readStructured(AccessibilityService service, StructuredResult callback) {
+        if(Build.VERSION.SDK_INT<30){
+            callback.finished(null,"Ekran okuma Android 11 veya üstünü gerektirir.");
+            return;
+        }
+        try{
+            service.takeScreenshot(Display.DEFAULT_DISPLAY,service.getMainExecutor(),
+                new AccessibilityService.TakeScreenshotCallback() {
+                    @Override public void onFailure(int errorCode){
+                        callback.finished(null,"Android ekran görüntüsü hatası: "+errorCode);
+                    }
+                    @Override public void onSuccess(AccessibilityService.ScreenshotResult screenshot){
+                        Bitmap copy=null;
+                        HardwareBuffer buffer=screenshot.getHardwareBuffer();
+                        try{
+                            ColorSpace space=screenshot.getColorSpace();
+                            if(space==null)space=ColorSpace.get(ColorSpace.Named.SRGB);
+                            Bitmap original=Bitmap.wrapHardwareBuffer(buffer,space);
+                            if(original==null)throw new IllegalStateException("Boş görüntü");
+                            copy=original.copy(Bitmap.Config.ARGB_8888,false);
+                        }catch(Exception e){
+                            callback.finished(null,"Görüntü alınamadı: "+e.getClass().getSimpleName());
+                        }finally{
+                            if(buffer!=null)buffer.close();
+                        }
+                        if(copy==null)return;
+                        final Bitmap image=copy;
+                        final TextRecognizer reader=TextRecognition.getClient(
+                            TextRecognizerOptions.DEFAULT_OPTIONS);
+                        try{
+                            reader.process(InputImage.fromBitmap(image,0))
+                                .addOnSuccessListener(t->callback.finished(t,""))
+                                .addOnFailureListener(e->callback.finished(null,
+                                    "OCR tanıma hatası: "+e.getClass().getSimpleName()))
+                                .addOnCompleteListener(done->{
+                                    reader.close();
+                                    image.recycle();
+                                });
+                        }catch(Exception e){
+                            reader.close();
+                            image.recycle();
+                            callback.finished(null,"OCR başlatılamadı: "+e.getClass().getSimpleName());
+                        }
+                    }
+                });
+        }catch(Exception e){
+            callback.finished(null,"Ekran yakalama reddedildi: "+e.getClass().getSimpleName());
+        }
+    }
+
 }

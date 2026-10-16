@@ -56,6 +56,7 @@ public class MacroAccessibilityService extends AccessibilityService {
     private WindowManager.LayoutParams menuPosition;
     private TextView message;
     private TextView pointCountLabel;
+    private WarlineAutoBot warlineBot;
     private int activeCount = 3;
     private int generation = 0;
     private long lastRecoveryAttempt = 0;
@@ -153,6 +154,7 @@ public class MacroAccessibilityService extends AccessibilityService {
         active = this;
         prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
         wm = (WindowManager) getSystemService(WINDOW_SERVICE);
+        warlineBot = new WarlineAutoBot(this,prefs);
         try {
             makeBubble();
         } catch (RuntimeException ex) {
@@ -240,6 +242,7 @@ public class MacroAccessibilityService extends AccessibilityService {
 
     private void clear() {
         shuttingDown = true;
+        if(warlineBot!=null)warlineBot.stop("Hizmet kapandı");
         try { stopForeground(STOP_FOREGROUND_REMOVE); }
         catch (RuntimeException error) { Log.w("LKMacro","Notification cleanup",error); }
         stop("Hizmet kapandı");
@@ -415,6 +418,8 @@ public class MacroAccessibilityService extends AccessibilityService {
             toast("Noktalar kaydedildi.");
         });
         addAction("👁  Ekranı OCR ile Oku (Akıllı)",this::scanScreen);
+        addAction("🤖  Akıllı Bot Başlat",this::startSmart);
+        addAction("■  Akıllı Bot Durdur",this::stopSmart);
         addAction("▶   Başlat",this::start);
         addAction("■   Durdur",()->stop("Elle durduruldu"));
         TextView foot=overlayText("Süreleri uygulamanın Ayarlar ekranında değiştirebilirsin.",11,false);
@@ -423,6 +428,39 @@ public class MacroAccessibilityService extends AccessibilityService {
         menu.addView(foot);
         menuPosition=layout(dp(309),WindowManager.LayoutParams.WRAP_CONTENT,dp(66),dp(140));
     }
+
+
+    private void startSmart() {
+        if (running) {
+            toast("Önce klasik dokunma makrosunu durdur.");
+            return;
+        }
+        if(warlineBot==null){
+            toast("Akıllı hizmet başlatılamadı.");
+            return;
+        }
+        if(warlineBot.isActive()){
+            toast("Akıllı bot zaten çalışıyor.");
+            hideMenu();
+            return;
+        }
+        hideMarkers();
+        hideMenu();
+        warlineBot.start();
+        if(bubbleText!=null)bubbleText.setText("A");
+        toast("Akıllı bot başladı: Warline açıkken onaylı görevler taranacak.");
+    }
+
+    private void stopSmart() {
+        if(warlineBot!=null)warlineBot.stop("Kullanıcı akıllı botu durdurdu");
+        if(bubbleText!=null)bubbleText.setText("●");
+        hideMenu();
+        toast("Akıllı bot durduruldu.");
+    }
+
+    /** Real display dimensions to validate OCR bounding boxes. */
+    public int screenWidth(){return width();}
+    public int screenHeight(){return height();}
 
     private void scanScreen() {
         if(running){
@@ -651,6 +689,10 @@ public class MacroAccessibilityService extends AccessibilityService {
     }
 
     private void start() {
+        if(warlineBot!=null&&warlineBot.isActive()){
+            toast("Önce akıllı botu durdur.");
+            return;
+        }
         if (running) {
             toast("Makro zaten çalışıyor.");
             return;

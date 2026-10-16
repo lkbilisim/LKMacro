@@ -47,6 +47,9 @@ public final class WarlineAutoBot {
     private long lastRestAt;
     private long restUntil;
     private int successfulActions;
+    private String armedTask="";
+    private int armedX,armedY;
+    private long armedAt;
 
     private final Runnable tick = new Runnable() {
         @Override public void run() {
@@ -89,6 +92,7 @@ public final class WarlineAutoBot {
         nextActionAllowedAt=SystemClock.uptimeMillis()+1300;
         lastRestAt=SystemClock.uptimeMillis();
         restUntil=0L;
+        armedTask="";
         successfulActions=0;
         write("Akıllı bot başladı. Yalnız izinli, ücretsiz eylemler etkin.");
         handler.removeCallbacks(tick);
@@ -99,6 +103,7 @@ public final class WarlineAutoBot {
         generation++;
         busy=false;
         actionPending=false;
+        armedTask="";
         handler.removeCallbacks(tick);
         write(reason);
     }
@@ -186,6 +191,7 @@ public final class WarlineAutoBot {
             .putLong("smart_ocr_when",System.currentTimeMillis()).apply();
 
         if(goldRisk(raw)) {
+            armedTask="";
             write("ALTIN/ÜCRETLİ EKRAN: Dokunma engellendi; güvenli ekran bekleniyor.");
             schedule(18000);
             return;
@@ -216,6 +222,7 @@ public final class WarlineAutoBot {
         // complete confirmation screens before automatic taps are enabled.
 
         if(candidates.isEmpty()){
+            armedTask="";
             write("OCR: "+screen+" • Güvenli işlem bulunamadı, kontrol bekleniyor.");
             schedule(12000);
             return;
@@ -231,10 +238,25 @@ public final class WarlineAutoBot {
         }
         final int x=chosen.rect.centerX(), y=chosen.rect.centerY();
         if(x<5||y<5||x>=service.screenWidth()||y>=service.screenHeight()){
+            armedTask="";
             write("OCR hedefi ekran dışında; dokunma iptal edildi.");
             schedule(12000);
             return;
         }
+        // Never act on one OCR guess. Verify the same text and its location
+        // in an independently captured second frame.
+        if(!armedTask.equals(chosen.task) ||
+            Math.abs(x-armedX)>30 || Math.abs(y-armedY)>30 ||
+            SystemClock.uptimeMillis()-armedAt>10000L) {
+            armedTask=chosen.task;
+            armedX=x;
+            armedY=y;
+            armedAt=SystemClock.uptimeMillis();
+            write("2. OCR doğrulaması bekleniyor: "+chosen.task);
+            schedule(1700);
+            return;
+        }
+        armedTask="";
         int token=generation;
         Path tap=new Path();tap.moveTo(x,y);
         GestureDescription gesture=new GestureDescription.Builder()

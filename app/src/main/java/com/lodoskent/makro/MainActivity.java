@@ -383,7 +383,7 @@ public class MainActivity extends Activity {
     private void smartPage() {
         contentArea.addView(UiKit.label(this,"◎  Akıllı Görüş",25,Color.WHITE,true));
         addSpace(contentArea,6);
-        contentArea.addView(subtitle("İlk aşama: ekranı oku, görevleri tanı, hazır işleri sırala. Oyun içinde otomatik dokunma henüz kapalı."));
+        contentArea.addView(subtitle("Akıllı bot: Warline açıkken OCR ile onaylı ücretsiz işlemleri otomatik yapar. Saldırı, seferberlik ve asker komutları doğrulanana kadar kapalı."));
         addSpace(contentArea,12);
 
         LinearLayout protection=card();
@@ -391,6 +391,34 @@ public class MainActivity extends Activity {
         addSpace(protection,7);
         protection.addView(subtitle("Altın, elmas, ücretli paket ve onaysız hızlandırma işlemleri otomasyona kapalıdır. Şahsi nişan görevleri de kapsam dışıdır."));
         addCard(contentArea,protection);
+
+        LinearLayout control=card();
+        control.addView(UiKit.label(this,"🤖  Canlı Akıllı Bot",18,UiKit.CYAN,true));
+        addSpace(control,9);
+        boolean live=MacroAccessibilityService.isSmartRunning();
+        control.addView(UiKit.label(this,live?"●  BOT ÇALIŞIYOR":"○  BOT DURUYOR",
+            14,live?0xff7bf1bf:0xffe0b7a3,true));
+        addSpace(control,7);
+        String statusText=prefs.getString("smart_auto_status","Henüz başlatılmadı.");
+        control.addView(subtitle("Son durum: "+statusText));
+        addSpace(control,11);
+        TextView start=button("▶  Akıllı Botu Başlat",true);
+        control.addView(start,columnParams(-1,d(51),8));
+        start.setOnClickListener(v->{
+            if(!MacroAccessibilityService.startSmartFromActivity())
+                Toast.makeText(this,"Önce erişilebilirlik hizmetini aç.",Toast.LENGTH_LONG).show();
+            else {
+                Toast.makeText(this,"Warline'a dön. Bot oyun ekranını tarayacak.",Toast.LENGTH_LONG).show();
+                new android.os.Handler(getMainLooper()).postDelayed(()->build(3),900);
+            }
+        });
+        TextView stop=button("■  Akıllı Botu Durdur",false);
+        control.addView(stop,columnParams(-1,d(48),0));
+        stop.setOnClickListener(v->{
+            MacroAccessibilityService.stopSmartFromActivity();
+            new android.os.Handler(getMainLooper()).postDelayed(()->build(3),400);
+        });
+        addCard(contentArea,control);
 
         LinearLayout scan=card();
         scan.addView(UiKit.label(this,"👁  Son OCR taraması",17,UiKit.CYAN,true));
@@ -413,7 +441,7 @@ public class MainActivity extends Activity {
             scan.addView(content);
         }
         addSpace(scan,10);
-        TextView note=UiKit.label(this,"Oyunu aç → yüzen LK düğmesi → 'Ekranı OCR ile Oku'. Ekran görüntüsü kaydedilmez; tanınan metin yerel olarak saklanır.",12,0xff91c9e4,false);
+        TextView note=UiKit.label(this,"Warline'da LK menüsünden Akıllı Bot Başlat seçilebilir. Ekran otomatik okunur. Kaydedilen yalnızca tanınan metin ve işlem durumudur.",12,0xff91c9e4,false);
         scan.addView(note);
         addCard(contentArea,scan);
 
@@ -425,7 +453,7 @@ public class MainActivity extends Activity {
         summary.addView(subtitle("Hazır: "+planner.readyCount(now)+" / "+SmartPlanner.IDS.length
             +"    •    Sonraki uyanma: "+SmartPlanner.clock(planner.nextWake(now))));
         addSpace(summary,7);
-        summary.addView(subtitle("Yalnız hazır görevler seçilir. Bekleyen görevlere süre bitmeden yeniden gidilmez. Buradaki seçim henüz oyun içinde işlem başlatmaz."));
+        summary.addView(subtitle("Yalnız hazır görevler seçilir. Bekleyen görevlere süre bitmeden dönülmez. Gerçek eylem, yalnızca ekranda doğrulanmış ücretsiz düğmede yapılır."));
         addSpace(summary,10);
         TextView shuffle=button("⤨   Sıradaki Hazır Görevi Seç",true);
         summary.addView(shuffle,columnParams(-1,d(50),8));
@@ -477,7 +505,7 @@ public class MainActivity extends Activity {
         addSpace(contentArea,17);
         contentArea.addView(UiKit.center(this,"LK Makro",30,Color.WHITE,true));
         addSpace(contentArea,3);
-        contentArea.addView(UiKit.center(this,"PREMIUM  •  v2.3",12,UiKit.CYAN,true));
+        contentArea.addView(UiKit.center(this,"PREMIUM  •  v2.5",12,UiKit.CYAN,true));
         addSpace(contentArea,28);
         LinearLayout card=card();
         card.addView(UiKit.label(this,"Otomatik Dokunuş",17,Color.WHITE,true));

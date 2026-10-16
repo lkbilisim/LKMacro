@@ -101,6 +101,23 @@ public class MacroAccessibilityService extends AccessibilityService {
             && service.bubble != null && service.bubble.isAttachedToWindow();
     }
 
+    public static boolean isSmartRunning(){
+        MacroAccessibilityService sv=active;
+        return sv!=null&&sv.warlineBot!=null&&sv.warlineBot.isActive();
+    }
+    public static boolean startSmartFromActivity(){
+        MacroAccessibilityService sv=active;
+        if(sv==null||sv.shuttingDown||sv.warlineBot==null)return false;
+        sv.handler.post(sv::startSmart);
+        return true;
+    }
+    public static boolean stopSmartFromActivity(){
+        MacroAccessibilityService sv=active;
+        if(sv==null||sv.shuttingDown||sv.warlineBot==null)return false;
+        sv.handler.post(sv::stopSmart);
+        return true;
+    }
+
     /** Safe to invoke from the Activity even when the user closed the menu with X. */
     public static boolean restoreBubble() {
         MacroAccessibilityService service = active;
